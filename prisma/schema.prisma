@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id               String   @id @default(uuid())
+  name             String
+  category         String   // "YOGURT", "GRANIZADO", "BROWNIE", "CONO", "TOPPING"
+  price            Float
+  includedToppings Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model InventoryItem {
+  id              String   @id @default(uuid())
+  name            String
+  quantity        Float    @default(0)
+  unit            String
+  lowThreshold    Float            @default(5)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  expirationItems ExpirationItem[]
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  totalPrice    Float
+  paymentMethod String      // "NEQUI" | "EFECTIVO"
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  productName String
+  price       Float
+  toppings    String   // stored as JSON string
+  merengue    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model ExpirationItem {
+  id              String        @id @default(uuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantity       Float
+  expirationDate DateTime
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
