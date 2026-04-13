@@ -111,6 +111,7 @@ export async function GET(req: Request) {
       chartData // Included timeseries
     });
   } catch (error) {
+    console.error('GET /api/stats error:', error);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
   }
 }

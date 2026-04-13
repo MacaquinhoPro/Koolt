@@ -6,6 +6,7 @@ export async function GET() {
     const items = await prisma.inventoryItem.findMany();
     return NextResponse.json(items);
   } catch (err) {
+    console.error('GET /api/inventory error:', err);
     return NextResponse.json({ error: 'Failed to find inventory items' }, { status: 500 });
   }
 }
@@ -19,6 +20,7 @@ export async function PATCH(req: Request) {
     });
     return NextResponse.json(updated);
   } catch (err) {
+    console.error('PATCH /api/inventory error:', err);
     return NextResponse.json({ error: 'Failed to update inventory' }, { status: 500 });
   }
 }

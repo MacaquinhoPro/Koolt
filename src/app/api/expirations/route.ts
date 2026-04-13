@@ -9,6 +9,7 @@ export async function GET() {
     });
     return NextResponse.json(items);
   } catch (error) {
+    console.error('GET /api/expirations error:', error);
     return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 });
   }
 }
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(item);
   } catch (error) {
+    console.error('POST /api/expirations error:', error);
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
   }
 }

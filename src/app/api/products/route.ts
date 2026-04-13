@@ -8,6 +8,7 @@ export async function GET() {
     });
     return NextResponse.json(products);
   } catch (error) {
+    console.error('GET /api/products error:', error);
     return NextResponse.json({ error: 'Failed to find products' }, { status: 500 });
   }
 }

@@ -9,6 +9,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     });
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE /api/expirations/[id] error:', error);
     return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 });
   }
 }
