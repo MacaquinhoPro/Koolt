@@ -12,3 +12,21 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to find products' }, { status: 500 });
   }
 }
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const product = await prisma.product.create({
+      data: {
+        name: body.name,
+        category: body.category,
+        price: parseFloat(body.price),
+        includedToppings: parseInt(body.includedToppings || '0')
+      }
+    });
+    return NextResponse.json(product);
+  } catch (err) {
+    console.error('POST /api/products error:', err);
+    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
+  }
+}

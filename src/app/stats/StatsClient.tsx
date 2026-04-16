@@ -66,10 +66,10 @@ export default function StatsClient() {
       ...(filter === 'custom' && fromDate && toDate ? [{ Metrica: "Desde", Valor: format(fromDate, 'yyyy-MM-dd') }, { Metrica: "Hasta", Valor: format(toDate, 'yyyy-MM-dd') }] : []),
       { Metrica: "Pedidos Totales", Valor: data.ordersCount },
       { Metrica: "Productos Vendidos", Valor: data.totalItemsSold },
-      { Metrica: "Ingresos Totales", Valor: "$" + data.totalEarned.toLocaleString() },
-      { Metrica: "Ganancia Neta (60%)", Valor: "$" + data.netProfit.toLocaleString() },
-      { Metrica: "Ventas Nequi", Valor: "$" + data.earnedNequi.toLocaleString() },
-      { Metrica: "Ventas Efectivo", Valor: "$" + data.earnedEfectivo.toLocaleString() },
+      { Metrica: "Ingresos Totales", Valor: "$" + data.totalEarned.toLocaleString('es-CO') },
+      { Metrica: "Ganancia Neta (60%)", Valor: "$" + data.netProfit.toLocaleString('es-CO') },
+      { Metrica: "Ventas Nequi", Valor: "$" + data.earnedNequi.toLocaleString('es-CO') },
+      { Metrica: "Ventas Efectivo", Valor: "$" + data.earnedEfectivo.toLocaleString('es-CO') },
       { Metrica: "Producto Más Vendido", Valor: data.topSeller },
       { Metrica: "Productos Sin Ventas", Valor: data.zeroSales.length > 0 ? data.zeroSales.join(', ') : 'Ninguno' },
     ];
@@ -86,7 +86,7 @@ export default function StatsClient() {
     wsData.push({ Metrica: "", Valor: "" });
     wsData.push({ Metrica: "--- DETALLE POR DÍA ---", Valor: "" });
     data.chartData.forEach(d => {
-      wsData.push({ Metrica: d.date, Valor: '$' + d.amount.toLocaleString() });
+      wsData.push({ Metrica: d.date, Valor: '$' + d.amount.toLocaleString('es-CO') });
     });
 
     const ws = XLSX.utils.json_to_sheet(wsData);
@@ -187,7 +187,7 @@ export default function StatsClient() {
           </div>
           <div>
             <h3 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '0.2rem' }}>Ingresos Totales</h3>
-            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.totalEarned.toLocaleString()}</p>
+            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.totalEarned.toLocaleString('es-CO')}</p>
           </div>
         </motion.div>
 
@@ -197,7 +197,7 @@ export default function StatsClient() {
           </div>
           <div>
             <h3 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '0.2rem' }}>Ganancia Neta (60%)</h3>
-            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.netProfit.toLocaleString()}</p>
+            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.netProfit.toLocaleString('es-CO')}</p>
           </div>
         </motion.div>
         
@@ -207,7 +207,7 @@ export default function StatsClient() {
           </div>
           <div>
             <h3 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '0.2rem' }}>Ganancia Nequi</h3>
-            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.earnedNequi.toLocaleString()}</p>
+            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.earnedNequi.toLocaleString('es-CO')}</p>
           </div>
         </motion.div>
         
@@ -217,7 +217,7 @@ export default function StatsClient() {
           </div>
           <div>
             <h3 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '0.2rem' }}>Ganancia Efectivo</h3>
-            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.earnedEfectivo.toLocaleString()}</p>
+            <p style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>${data.earnedEfectivo.toLocaleString('es-CO')}</p>
           </div>
         </motion.div>
         
@@ -261,7 +261,7 @@ export default function StatsClient() {
       >
         <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>Evolución de Ventas</h3>
         {data.chartData && data.chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" minHeight={300}>
             <AreaChart data={data.chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
@@ -273,7 +273,7 @@ export default function StatsClient() {
               <YAxis stroke="var(--text-secondary)" fontSize={12} tickFormatter={(val) => `$${val/1000}k`} />
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
               <Tooltip 
-                formatter={(value: any) => [`$${value.toLocaleString()}`, 'Ventas']} 
+                formatter={(value: any) => [`$${value.toLocaleString('es-CO')}`, 'Ventas']} 
                 labelStyle={{ color: 'var(--text-primary)' }}
                 contentStyle={{ borderRadius: '8px', border: '1px solid var(--border-color)', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
               />

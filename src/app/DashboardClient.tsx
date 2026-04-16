@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { IceCream2, CupSoda, CakeSlice, ShoppingBag, X, Check, Trash2, Plus } from 'lucide-react';
+import { IceCream2, CupSoda, CakeSlice, ShoppingBag, X, Check, Trash2, Plus, Edit2, Settings2 } from 'lucide-react';
 
 type Product = {
   id: string;
@@ -24,16 +25,79 @@ type CartItem = {
 };
 
 export default function DashboardClient({ products }: { products: Product[] }) {
+  const router = useRouter();
+  const [productsList, setProductsList] = useState<Product[]>(products);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   
+  useEffect(() => {
+    setProductsList(products);
+  }, [products]);
+
+  // Product Management States
+  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState<Partial<Product>>({ name: '', category: 'YOGURT', price: 0, includedToppings: 0 });
+
   // Modal states
   const [selectedToppings, setSelectedToppings] = useState<Product[]>([]);
   const [hasMerengue, setHasMerengue] = useState(false);
 
   // Grouped products
-  const bases = products.filter(p => p.category !== 'TOPPING');
-  const availableToppings = products.filter(p => p.category === 'TOPPING');
+  const bases = productsList.filter(p => p.category !== 'TOPPING');
+  const availableToppings = productsList.filter(p => p.category === 'TOPPING');
+
+  const openProductForm = (p?: Product) => {
+    if (p) {
+      setEditingProduct(p);
+      setProductForm({ name: p.name, category: p.category, price: p.price, includedToppings: p.includedToppings });
+    } else {
+      setEditingProduct(null);
+      setProductForm({ name: '', category: 'YOGURT', price: 0, includedToppings: 0 });
+    }
+    setIsProductFormOpen(true);
+  };
+
+  const saveProduct = async () => {
+    if (!productForm.name || !productForm.price) {
+      toast.error('Nombre y precio requeridos'); return;
+    }
+    const toastId = toast.loading('Guardando...');
+    try {
+      const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
+      const method = editingProduct ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(productForm)
+      });
+      if (res.ok) {
+        toast.success(`Producto ${editingProduct ? 'actualizado' : 'creado'}`, { id: toastId });
+        setIsProductFormOpen(false);
+        router.refresh();
+      } else {
+        toast.error('Error al guardar', { id: toastId });
+      }
+    } catch {
+      toast.error('Error de red', { id: toastId });
+    }
+  };
+
+  const deleteProduct = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('¿Eliminar producto?')) return;
+    const toastId = toast.loading('Eliminando...');
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Producto eliminado', { id: toastId });
+        router.refresh();
+      } else {
+        toast.error('Error al eliminar', { id: toastId });
+      }
+    } catch {
+      toast.error('Error de red', { id: toastId });
+    }
+  };
 
   const openProductModal = (p: Product) => {
     setActiveProduct(p);
@@ -113,12 +177,18 @@ export default function DashboardClient({ products }: { products: Product[] }) {
   };
 
   return (
-    <div style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 120px)' }}>
+    <div className="dashboard-layout">
       {/* Product Selection List */}
-      <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '1rem' }}>
-        <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <ShoppingBag /> Selecciona el Producto Base
-        </h2>
+      <div className="dashboard-panel-left">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShoppingBag /> Selecciona el Producto Base
+          </h2>
+          <button className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: isEditingMode ? 'var(--bg-light)' : 'var(--accent-lt-blue)', color: 'var(--accent-blue)' }} onClick={() => setIsEditingMode(!isEditingMode)}>
+            <Settings2 size={18} /> {isEditingMode ? 'Salir Edición' : 'Gestionar Productos'}
+          </button>
+        </div>
+        
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -130,29 +200,96 @@ export default function DashboardClient({ products }: { products: Product[] }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              whileHover={{ scale: 1.05, translateY: -5 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={!isEditingMode ? { scale: 1.05, translateY: -5 } : {}}
+              whileTap={!isEditingMode ? { scale: 0.95 } : {}}
               key={p.id} 
-              className="card flex flex-col items-center justify-center text-center gap-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow" 
-              onClick={() => openProductModal(p)}
+              className="card flex flex-col items-center justify-center text-center gap-3 shadow-sm hover:shadow-md transition-shadow relative" 
+              onClick={() => !isEditingMode && openProductModal(p)}
               style={{
                 background: 'white',
                 border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-lg)'
+                borderRadius: 'var(--radius-lg)',
+                cursor: isEditingMode ? 'default' : 'pointer'
               }}
             >
               <div style={{ padding: '1rem', background: 'var(--bg-light)', borderRadius: '50%' }}>
                 {getCategoryIcon(p.category)}
               </div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--text-primary)' }}>{p.name}</h3>
-              <p style={{ color: 'var(--accent-blue)', fontWeight: '700', fontSize: '1.1rem' }}>${p.price.toLocaleString()}</p>
+              <p style={{ color: 'var(--accent-blue)', fontWeight: '700', fontSize: '1.1rem' }}>${p.price.toLocaleString('es-CO')}</p>
+              
+              {isEditingMode && (
+                <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: '0.5rem' }}>
+                  <button onClick={(e) => { e.stopPropagation(); openProductForm(p); }} style={{ padding: '0.4rem', background: 'white', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                    <Edit2 size={16} />
+                  </button>
+                  <button onClick={(e) => deleteProduct(p.id, e)} style={{ padding: '0.4rem', background: 'white', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--danger-red)' }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))}
+          {isEditingMode && (
+             <motion.div 
+               whileHover={{ scale: 1.02 }}
+               whileTap={{ scale: 0.98 }}
+               className="card flex flex-col items-center justify-center text-center gap-3 cursor-pointer"
+               onClick={() => openProductForm()}
+               style={{ border: '2px dashed var(--border-color)', background: 'var(--bg-light)', minHeight: '200px' }}
+             >
+               <Plus size={40} color="var(--text-secondary)" />
+               <h3 style={{ color: 'var(--text-secondary)' }}>Añadir Base</h3>
+             </motion.div>
+          )}
         </motion.div>
+
+        {isEditingMode && (
+          <>
+            <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2rem' }}>
+              <Settings2 /> Gestionar Toppings
+            </h2>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid-container"
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem' }}
+            >
+              {availableToppings.map((p, i) => (
+                <motion.div key={p.id} className="card relative" style={{ display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>{p.name}</h3>
+                  <p style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>${p.price.toLocaleString('es-CO')}</p>
+                  <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={(e) => { e.stopPropagation(); openProductForm(p); }} style={{ padding: '0.4rem', background: 'white', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                      <Edit2 size={16} />
+                    </button>
+                    <button onClick={(e) => deleteProduct(p.id, e)} style={{ padding: '0.4rem', background: 'white', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--danger-red)' }}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+              <motion.div 
+                 whileHover={{ scale: 1.02 }}
+                 whileTap={{ scale: 0.98 }}
+                 className="card flex flex-col items-center justify-center text-center cursor-pointer"
+                 onClick={() => {
+                   setEditingProduct(null);
+                   setProductForm({ name: '', category: 'TOPPING', price: 0, includedToppings: 0 });
+                   setIsProductFormOpen(true);
+                 }}
+                 style={{ border: '2px dashed var(--border-color)', background: 'var(--bg-light)', minHeight: '80px', padding: '1rem' }}
+               >
+                 <Plus size={24} color="var(--text-secondary)" />
+                 <span style={{ color: 'var(--text-secondary)' }}>Añadir Topping</span>
+               </motion.div>
+            </motion.div>
+          </>
+        )}
       </div>
 
       {/* Cart Panel */}
-      <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+      <div className="card dashboard-panel-right">
         <h2 style={{ fontSize: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <ShoppingCartIcon /> Carrito
         </h2>
@@ -185,7 +322,7 @@ export default function DashboardClient({ products }: { products: Product[] }) {
                   <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                     {item.toppings.length > 0 ? `Toppings: ${item.toppings.join(', ')}` : 'Sin Toppings'}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: 'var(--accent-blue)', fontSize: '1.1rem' }}>${item.price.toLocaleString()}</div>
+                  <div style={{ fontWeight: 'bold', color: 'var(--accent-blue)', fontSize: '1.1rem' }}>${item.price.toLocaleString('es-CO')}</div>
                 </motion.div>
               ))
             )}
@@ -195,7 +332,7 @@ export default function DashboardClient({ products }: { products: Product[] }) {
         <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
             <span>Total:</span>
-            <span style={{ color: 'var(--accent-blue)' }}>${totalCart.toLocaleString()}</span>
+            <span style={{ color: 'var(--accent-blue)' }}>${totalCart.toLocaleString('es-CO')}</span>
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="btn btn-primary" style={{ flex: 1, background: '#6f42c1', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }} onClick={() => checkout('NEQUI')} disabled={cart.length === 0}>
@@ -286,6 +423,71 @@ export default function DashboardClient({ products }: { products: Product[] }) {
               >
                 <Plus /> Agregar al Carrito
               </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Product Edit/Create Form Modal */}
+      <AnimatePresence>
+        {isProductFormOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="card" style={{ width: '400px', maxWidth: '95%', padding: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{editingProduct ? 'Editar' : 'Añadir'} Producto</h2>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }} onClick={() => setIsProductFormOpen(false)}>
+                  <X size={24} color="var(--text-secondary)" />
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input 
+                  type="text" placeholder="Nombre (ej. Yogurt Helado)" 
+                  value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} 
+                  style={{ padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}
+                />
+                
+                <select 
+                  value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}
+                  style={{ padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'white' }}
+                >
+                  <option value="YOGURT">Yogurt</option>
+                  <option value="GRANIZADO">Granizado</option>
+                  <option value="BROWNIE">Brownie</option>
+                  <option value="CONO">Cono</option>
+                  <option value="TOPPING">Topping</option>
+                </select>
+
+                <input 
+                  type="number" placeholder="Precio ($)" 
+                  value={productForm.price || ''} onChange={e => setProductForm({...productForm, price: parseFloat(e.target.value) || 0})} 
+                  style={{ padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}
+                />
+
+                {productForm.category !== 'TOPPING' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Toppings Incluidos:</label>
+                    <input 
+                      type="number" min="0" 
+                      value={productForm.includedToppings || 0} onChange={e => setProductForm({...productForm, includedToppings: parseInt(e.target.value) || 0})} 
+                      style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: '80px' }}
+                    />
+                  </div>
+                )}
+                
+                <button className="btn btn-primary" onClick={saveProduct} style={{ marginTop: '1rem', padding: '1rem', fontWeight: '600' }}>
+                  Guardar Producto
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

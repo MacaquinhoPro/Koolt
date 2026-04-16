@@ -155,3 +155,128 @@ a {
   background: var(--bg-light, white);
   width: 140px;
 }
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  /* Layout Updates */
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: 70px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--border-color);
+    z-index: 1000;
+  }
+
+  .sidebar-header {
+    display: none; /* Hide logo/title on mobile */
+  }
+
+  .nav-menu {
+    display: flex;
+    flex-direction: row;
+    padding: 0;
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .nav-item {
+    flex-direction: column;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    gap: 0.25rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-item svg {
+    margin: 0;
+  }
+
+  .nav-item.active {
+    border-bottom-color: var(--accent-blue);
+  }
+
+  .main-content {
+    padding: 1rem;
+    padding-bottom: 90px; /* Space for bottom nav */
+    height: 100vh;
+  }
+
+  /* Dashboard Client */
+  .dashboard-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 1rem !important;
+  }
+
+  .dashboard-panel-left, .dashboard-panel-right {
+    padding-right: 0 !important;
+    flex: none !important;
+    width: 100% !important;
+  }
+  
+  .dashboard-panel-left {
+    min-height: 50vh;
+  }
+  
+  .dashboard-panel-right {
+    min-height: 400px;
+  }
+  
+  /* Shared Mobile tweaks */
+  .card {
+    padding: 1rem;
+  }
+  h1 {
+    font-size: 1.5rem !important;
+    margin-bottom: 1rem !important;
+  }
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  .grid-container {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  /* Tables horizontally scrollable */
+  table {
+    min-width: 600px;
+  }
+}
+
+/* Base Classes that were inline */
+.dashboard-layout {
+  display: flex;
+  gap: 2rem;
+  height: calc(100vh - 120px);
+}
+.dashboard-panel-left {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+.dashboard-panel-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
