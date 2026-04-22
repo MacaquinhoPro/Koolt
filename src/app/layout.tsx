@@ -1,14 +1,21 @@
 import type { Metadata } from 'next';
-import { Outfit } from 'next/font/google';
-import Link from 'next/link';
+import { Outfit, Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
-import { ShoppingCart, Package, BarChart3, IceCream2, CalendarDays } from 'lucide-react';
+import Sidebar from '@/components/Sidebar';
 import './globals.css';
 
-const outfit = Outfit({ subsets: ['latin'] });
+const outfit = Outfit({ 
+  subsets: ['latin'],
+  variable: '--font-outfit',
+});
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
-  title: 'Koolt POS',
+  title: 'Koolt POS | Premium Management',
   description: 'Point of Sale app for Koolt Ice Cream Shop',
 };
 
@@ -18,31 +25,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-      <body className={outfit.className}>
+    <html lang="es" className={`${outfit.variable} ${inter.variable}`}>
+      <body>
         <div className="app-container">
-          <aside className="sidebar">
-            <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <IceCream2 /> Koolt POS
-            </div>
-            <nav className="nav-menu">
-              <Link href="/" className="nav-item">
-                <ShoppingCart size={20} /> Crear Pedido
-              </Link>
-              <Link href="/inventory" className="nav-item">
-                <Package size={20} /> Inventario
-              </Link>
-              <Link href="/expirations" className="nav-item">
-                <CalendarDays size={20} /> Vencimientos
-              </Link>
-              <Link href="/stats" className="nav-item">
-                <BarChart3 size={20} /> Estadísticas
-              </Link>
-            </nav>
-          </aside>
+          <Sidebar />
           <main className="main-content">
             {children}
-            <Toaster position="bottom-right" />
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#1e293b',
+                  color: '#fff',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                },
+              }}
+            />
           </main>
         </div>
       </body>

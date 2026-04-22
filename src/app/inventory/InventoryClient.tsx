@@ -4,8 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Package, Save, CheckCircle2, CalendarDays, Plus, Trash2, Edit2, X } from 'lucide-react';
-import { differenceInDays } from 'date-fns';
+import { 
+  AlertTriangle, 
+  Package, 
+  Save, 
+  CheckCircle2, 
+  Plus, 
+  Trash2, 
+  Edit2, 
+  X,
+  History,
+  TrendingDown,
+  ChevronRight
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
 type InventoryItem = {
@@ -47,11 +58,10 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
         body: JSON.stringify({ id, quantity: newQuantity })
       });
       if (res.ok) {
-        setItems(items.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
         toast.success("Inventario actualizado", { id: toastId });
         router.refresh();
       } else {
-        toast.error("Error al actualizar inventario", { id: toastId });
+        toast.error("Error al actualizar", { id: toastId });
       }
     } catch {
       toast.error("Error de red", { id: toastId });
@@ -65,7 +75,7 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
       toast.error("Nombre y unidad son requeridos");
       return;
     }
-    const toastId = toast.loading('Creando item...');
+    const toastId = toast.loading('Creando...');
     try {
       const res = await fetch('/api/inventory', {
         method: 'POST',
@@ -73,8 +83,6 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
         body: JSON.stringify(newItem)
       });
       if (res.ok) {
-        const created = await res.json();
-        setItems([...items, created]);
         setIsAdding(false);
         setNewItem({ name: '', quantity: 0, unit: '', lowThreshold: 5 });
         toast.success("Item creado", { id: toastId });
@@ -88,12 +96,11 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este item?')) return;
+    if (!confirm('¿Eliminar este insumo definitivamente?')) return;
     const toastId = toast.loading('Eliminando...');
     try {
       const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setItems(items.filter(i => i.id !== id));
         toast.success("Item eliminado", { id: toastId });
         router.refresh();
       } else {
@@ -106,7 +113,7 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
 
   const handleSaveEdit = async (id: string) => {
     setSavingId(id);
-    const toastId = toast.loading('Guardando cambios...');
+    const toastId = toast.loading('Guardando...');
     try {
       const res = await fetch(`/api/inventory/${id}`, {
         method: 'PATCH',
@@ -114,8 +121,6 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
         body: JSON.stringify(editForm)
       });
       if (res.ok) {
-        const updated = await res.json();
-        setItems(items.map(item => item.id === id ? { ...item, ...updated } : item));
         setEditingId(null);
         toast.success("Item actualizado", { id: toastId });
         router.refresh();
@@ -129,21 +134,6 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
     }
   };
 
-  const handleInputChange = (id: string, val: string) => {
-    const num = parseFloat(val);
-    if (isNaN(num)) return;
-    setItems(items.map(i => i.id === id ? { ...i, quantity: num } : i));
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
-  };
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0 }
-  };
-
   const chartData = items.map(item => ({
     name: item.name,
     Cantidad: item.quantity,
@@ -151,213 +141,236 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
     isLow: item.quantity <= item.lowThreshold
   }));
 
-  const inputStyle = {
-    padding: '0.6rem', 
-    borderRadius: 'var(--radius-sm)', 
-    border: '1px solid var(--border-color)', 
-    outline: 'none',
-    fontFamily: 'inherit',
-    fontSize: '1rem',
-    background: 'white',
-    width: '100%'
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+  
+  const itemVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { opacity: 1, x: 0 }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', paddingBottom: '3rem' }}>
       
+      {/* Alertas de Bajo Stock - Premium Alert */}
       <AnimatePresence>
         {lowStockItems.length > 0 && (
           <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{ overflow: 'hidden' }}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
           >
-            <div style={{ backgroundColor: '#fee2e2', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid #f87171', boxShadow: 'var(--shadow-sm)' }}>
-              <h2 style={{ color: '#b91c1c', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: '600' }}>
-                <AlertTriangle size={24} /> Alertas de Bajo Stock
+            <div style={{ 
+              backgroundColor: 'var(--danger-soft)', 
+              padding: '2rem', 
+              borderRadius: 'var(--radius-lg)', 
+              border: '1px solid var(--danger)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              <h2 style={{ 
+                color: 'var(--danger)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem', 
+                fontSize: '1.25rem', 
+                fontWeight: '800' 
+              }}>
+                <AlertTriangle size={28} /> Alerta Crítica de Stock
               </h2>
-              <ul style={{ paddingLeft: '2rem', color: '#991b1b', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
                 {lowStockItems.map(item => (
-                  <motion.li key={item.id} initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
-                    <strong style={{ fontWeight: '600' }}>{item.name}:</strong> Quedan {item.quantity} {item.unit} (Umbral: {item.lowThreshold})
-                  </motion.li>
+                  <div key={item.id} style={{ background: 'white', padding: '1rem', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '700' }}>{item.name}</span>
+                    <span style={{ color: 'var(--danger)', fontWeight: '800' }}>{item.quantity} {item.unit}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
-          <Package size={24} className="text-secondary" /> Estado Actual del Inventario
-        </h2>
-        <ResponsiveContainer width="100%" minHeight={300}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-            <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} stroke="var(--text-secondary)" fontSize={12} />
-            <YAxis stroke="var(--text-secondary)" fontSize={12} />
-            <Tooltip 
-               cursor={{ fill: 'rgba(0,0,0,0.05)' }} 
-               contentStyle={{ borderRadius: '8px', border: '1px solid var(--border-color)' }}
-            />
-            <Bar dataKey="Cantidad" radius={[4, 4, 0, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.isLow ? 'var(--danger-red)' : 'var(--accent-blue)'} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </motion.div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+        {/* Gráfico de Estado */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="card" 
+          style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+             <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <TrendingDown className="text-primary" /> Distribución de Stock
+             </h2>
+             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Consumo en Tiempo Real</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border-color)" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" stroke="var(--text-secondary)" fontSize={12} width={100} />
+                <Tooltip 
+                  cursor={{ fill: 'var(--primary-soft)' }} 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                />
+                <Bar dataKey="Cantidad" radius={[0, 4, 4, 0]} barSize={20}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.isLow ? 'var(--danger)' : 'var(--primary)'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '600' }}>Detalle y Edición</h2>
-          <button className="btn btn-primary" onClick={() => setIsAdding(!isAdding)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Plus size={18} /> Añadir Item
+        {/* Resumen & Métricas Rápidas */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ background: 'var(--primary-soft)', padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+              <Package size={32} className="text-primary" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Ítems en Inventario</h3>
+              <p style={{ fontSize: '2rem', fontWeight: '800' }}>{items.length}</p>
+            </div>
+          </div>
+          <div className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ background: 'var(--danger-soft)', padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+              <AlertTriangle size={32} className="text-danger" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Insumos por Agotarse</h3>
+              <p style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--danger)' }}>{lowStockItems.length}</p>
+            </div>
+          </div>
+          <button className="btn btn-primary" style={{ height: '4rem', width: '100%' }} onClick={() => setIsAdding(true)}>
+             <Plus /> Nuevo Insumo
           </button>
         </div>
+      </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-              <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Producto</th>
-              <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Unidad</th>
-              <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Cantidad Actual</th>
-              <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Acciones</th>
-            </tr>
-          </thead>
-          <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
-            <AnimatePresence>
-              {isAdding && (
-                <motion.tr 
-                  initial={{ opacity: 0, height: 0 }} 
-                  animate={{ opacity: 1, height: 'auto' }} 
-                  exit={{ opacity: 0, height: 0 }}
-                  style={{ backgroundColor: '#f0f9ff' }}
-                >
-                  <td style={{ padding: '1rem' }}>
-                    <input type="text" placeholder="Nombre (ej: Vaso)" style={inputStyle} value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    <input type="text" placeholder="Unidad (ej: Unidades)" style={inputStyle} value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})} />
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input type="number" placeholder="Cant" style={{...inputStyle, width: '80px'}} value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: parseFloat(e.target.value)})} />
-                      <span style={{ fontSize: '0.9rem' }}>Umbral:</span>
-                      <input type="number" placeholder="Umbral" style={{...inputStyle, width: '80px'}} value={newItem.lowThreshold} onChange={e => setNewItem({...newItem, lowThreshold: parseFloat(e.target.value)})} />
-                    </div>
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-primary" onClick={handleCreate}>Guardar</button>
-                      <button className="btn btn-danger" onClick={() => setIsAdding(false)}>Cancelar</button>
-                    </div>
-                  </td>
-                </motion.tr>
-              )}
-            </AnimatePresence>
+      {/* Tabla de Detalle - Data Grid Format */}
+      <div className="card" style={{ padding: '0' }}>
+        <div style={{ padding: '2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <History className="text-primary" /> Inventario Detallado
+          </h2>
+        </div>
 
-            {items.map(item => {
-              const isLow = item.quantity <= item.lowThreshold;
-              const closeExpirations = (item.expirationItems || []).filter(e => differenceInDays(new Date(e.expirationDate), new Date()) <= 7);
-              const hasAlerts = isLow || closeExpirations.length > 0;
-              const isEditing = editingId === item.id;
+        <div className="data-table-container" style={{ border: 'none' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Producto / Recurso</th>
+                <th>Unidad</th>
+                <th>Stock Actual</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
+              <AnimatePresence mode="popLayout">
+                {isAdding && (
+                  <motion.tr 
+                    initial={{ opacity: 0, height: 0 }} 
+                    animate={{ opacity: 1, height: 'auto' }} 
+                    exit={{ opacity: 0, height: 0 }}
+                    style={{ background: 'var(--bg-color)' }}
+                  >
+                    <td>
+                      <input type="text" placeholder="Nombre" style={{ width: '100%' }} value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
+                    </td>
+                    <td>
+                      <input type="text" placeholder="Ej. Litros" style={{ width: '100%' }} value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})} />
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <input type="number" placeholder="Cant" style={{ width: '80px' }} value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: parseFloat(e.target.value)})} />
+                        <input type="number" placeholder="Umbral" style={{ width: '80px' }} value={newItem.lowThreshold} onChange={e => setNewItem({...newItem, lowThreshold: parseFloat(e.target.value)})} />
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem' }} onClick={handleCreate}>Guardar</button>
+                        <button className="btn" onClick={() => setIsAdding(false)}>Cancelar</button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                )}
 
-              return (
-                <motion.tr variants={itemVariants} key={item.id} style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: hasAlerts && !isEditing ? '#fef2f2' : 'transparent', transition: 'background-color 0.3s' }}>
-                  <td style={{ padding: '1.2rem 1rem', fontWeight: '500', color: hasAlerts && !isEditing ? '#b91c1c' : 'var(--text-primary)' }}>
-                    {isEditing ? (
-                      <input type="text" style={inputStyle} value={editForm.name ?? item.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
-                    ) : (
-                      <>
-                        {item.name}
-                        {isLow && <span style={{ marginLeft: '0.5rem', padding: '0.2rem 0.5rem', borderRadius: '12px', background: '#f87171', color: 'white', fontSize: '0.8rem', fontWeight: '600' }}>Bajo</span>}
-                        {closeExpirations.length > 0 && (
-                          <span title={`${closeExpirations.length} lote(s) por vencer o vencido(s)`} style={{ marginLeft: '0.5rem', verticalAlign: 'middle', cursor: 'help' }}>
-                            <CalendarDays size={16} color="#f59e0b" />
-                          </span>
+                {items.map(item => {
+                  const isLow = item.quantity <= item.lowThreshold;
+                  const isEditing = editingId === item.id;
+
+                  return (
+                    <motion.tr variants={itemVariants} key={item.id} style={{ background: isLow && !isEditing ? 'rgba(239, 68, 68, 0.02)' : 'transparent' }}>
+                      <td style={{ fontWeight: '700' }}>
+                        {isEditing ? (
+                          <input type="text" style={{ width: '100%' }} value={editForm.name ?? item.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {item.name}
+                            {isLow && <span style={{ padding: '0.2rem 0.6rem', borderRadius: '1rem', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: '0.7rem', fontWeight: '800' }}>BAJO</span>}
+                          </div>
                         )}
-                      </>
-                    )}
-                  </td>
-                  <td style={{ padding: '1.2rem 1rem', color: 'var(--text-secondary)' }}>
-                    {isEditing ? (
-                      <input type="text" style={inputStyle} value={editForm.unit ?? item.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} />
-                    ) : (
-                      item.unit
-                    )}
-                  </td>
-                  <td style={{ padding: '1.2rem 1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <input 
-                        type="number" 
-                        value={item.quantity}
-                        min={0}
-                        onChange={(e) => handleInputChange(item.id, e.target.value)}
-                        style={{ 
-                          width: '100px', 
-                          padding: '0.6rem', 
-                          borderRadius: 'var(--radius-sm)', 
-                          border: `1px solid ${isLow ? '#f87171' : 'var(--border-color)'}`, 
-                          outline: 'none',
-                          fontFamily: 'inherit',
-                          fontSize: '1rem',
-                          background: 'white'
-                        }}
-                      />
-                      {isEditing ? (
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                           <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>/ Umbral:</span>
-                           <input type="number" style={{...inputStyle, width: '70px', padding: '0.4rem'}} value={editForm.lowThreshold ?? item.lowThreshold} onChange={e => setEditForm({...editForm, lowThreshold: parseFloat(e.target.value)})} />
-                         </div>
-                      ) : (
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>/ {item.lowThreshold} umbral</span>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ padding: '1.2rem 1rem' }}>
-                    {isEditing ? (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-primary" onClick={() => handleSaveEdit(item.id)} disabled={savingId === item.id} style={{ padding: '0.5rem' }}>
-                          {savingId === item.id ? <Save size={18} className="animate-pulse" /> : <CheckCircle2 size={18} />}
-                        </button>
-                        <button className="btn btn-danger" onClick={() => { setEditingId(null); setEditForm({}); }} style={{ padding: '0.5rem' }}>
-                          <X size={18} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <motion.button 
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="btn btn-primary"
-                          disabled={savingId === item.id}
-                          onClick={() => updateQuantity(item.id, item.quantity)}
-                          title="Guardar Cantidad"
-                          style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                        >
-                          <Save size={18} /> Guardar
-                        </motion.button>
-                        <button className="btn" style={{ padding: '0.5rem', background: '#f1f5f9', color: 'var(--text-primary)' }} onClick={() => { setEditingId(item.id); setEditForm(item); }} title="Editar item">
-                          <Edit2 size={18} />
-                        </button>
-                        <button className="btn btn-danger" style={{ padding: '0.5rem' }} onClick={() => handleDelete(item.id)} title="Eliminar item">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </motion.tr>
-              );
-            })}
-          </motion.tbody>
-        </table>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {isEditing ? (
+                          <input type="text" style={{ width: '100%' }} value={editForm.unit ?? item.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} />
+                        ) : (
+                          item.unit
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ 
+                            fontSize: '1.25rem', 
+                            fontWeight: '800', 
+                            color: isLow ? 'var(--danger)' : 'var(--text-primary)' 
+                          }}>
+                            {item.quantity}
+                          </span>
+                          {!isEditing && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/ Min: {item.lowThreshold}</span>}
+                          {isEditing && (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <span>/ Min</span>
+                              <input type="number" style={{ width: '80px' }} value={editForm.lowThreshold ?? item.lowThreshold} onChange={e => setEditForm({...editForm, lowThreshold: parseFloat(e.target.value)})} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-primary" onClick={() => handleSaveEdit(item.id)} disabled={savingId === item.id}>
+                              <CheckCircle2 size={18} /> Confirmar
+                            </button>
+                            <button className="btn btn-danger" onClick={() => setEditingId(null)}>
+                              <X size={18} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => { setEditingId(item.id); setEditForm(item); }} title="Editar">
+                              <Edit2 size={18} />
+                            </button>
+                            <button className="btn btn-danger" style={{ padding: '0.5rem', background: 'transparent' }} onClick={() => handleDelete(item.id)} title="Eliminar">
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

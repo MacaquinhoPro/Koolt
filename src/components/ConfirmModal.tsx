@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X, HelpCircle, AlertTriangle } from 'lucide-react';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -34,8 +34,8 @@ export default function ConfirmModal({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(4px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -44,72 +44,87 @@ export default function ConfirmModal({
           onClick={onCancel}
         >
           <motion.div
-            initial={{ scale: 0.95, y: 15, opacity: 0 }}
+            initial={{ scale: 0.9, y: 20, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.95, y: 15, opacity: 0 }}
+            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
             className="card"
             style={{
               width: '90%',
-              maxWidth: '400px',
-              padding: '1.5rem',
+              maxWidth: '440px',
+              padding: '2.5rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '1rem',
-              boxShadow: 'var(--shadow-lg)'
+              gap: '1.5rem',
+              boxShadow: 'var(--shadow-xl)',
+              border: 'none',
+              textAlign: 'center'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: isDestructive ? 'var(--danger-red)' : 'var(--accent-blue)' }}>
-                <AlertCircle size={24} />
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '600' }}>{title}</h3>
-              </div>
-              <button 
-                onClick={onCancel} 
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-              >
-                <X size={20} />
-              </button>
+            <div style={{ 
+              margin: '0 auto',
+              background: isDestructive ? 'var(--danger-soft)' : 'var(--primary-soft)',
+              padding: '1.25rem',
+              borderRadius: '50%',
+              width: 'fit-content'
+            }}>
+              {isDestructive ? (
+                <AlertTriangle size={32} className="text-danger" />
+              ) : (
+                <HelpCircle size={32} className="text-primary" />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: '800' }}>{title}</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '1rem' }}>
+                {message}
+              </p>
             </div>
             
-            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-              {message}
-            </p>
-            
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               <button 
                 onClick={onCancel}
-                style={{
-                  padding: '0.6rem 1rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  background: 'none',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  color: 'var(--text-primary)'
-                }}
+                className="btn btn-secondary"
+                style={{ flex: 1, height: '3.5rem' }}
               >
                 {cancelLabel}
               </button>
               <button 
                 onClick={() => {
                   onConfirm();
-                  onCancel(); // Autoclose on simple confirms
+                  onCancel();
                 }}
-                className={isDestructive ? "btn" : "btn btn-primary"}
-                style={{
-                  padding: '0.6rem 1rem',
-                  fontWeight: '500',
-                  background: isDestructive ? 'var(--danger-red)' : undefined,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  cursor: 'pointer'
+                className={isDestructive ? "btn btn-danger" : "btn btn-primary"}
+                style={{ 
+                  flex: 1, 
+                  height: '3.5rem',
+                  background: isDestructive ? 'var(--danger)' : undefined,
+                  color: isDestructive ? 'white' : undefined
                 }}
               >
                 {confirmLabel}
               </button>
             </div>
+
+            <button 
+              onClick={onCancel} 
+              style={{ 
+                position: 'absolute', 
+                top: '1.25rem', 
+                right: '1.25rem', 
+                background: 'var(--bg-color)', 
+                border: 'none', 
+                cursor: 'pointer', 
+                color: 'var(--text-muted)',
+                borderRadius: '50%',
+                padding: '0.4rem',
+                display: 'flex'
+              }}
+            >
+              <X size={18} />
+            </button>
           </motion.div>
         </motion.div>
       )}
