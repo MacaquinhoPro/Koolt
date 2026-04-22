@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarDays, PackagePlus, Trash2, Download, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -25,7 +26,13 @@ type InventoryLite = {
 };
 
 export default function ExpirationsClient({ initialItems, inventoryItems }: { initialItems: ExpirationItem[], inventoryItems: InventoryLite[] }) {
+  const router = useRouter();
   const [items, setItems] = useState<ExpirationItem[]>(initialItems);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
   const [loading, setLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   
@@ -62,6 +69,7 @@ export default function ExpirationsClient({ initialItems, inventoryItems }: { in
         setNewItem({ inventoryItemId: '', quantity: 1, expirationDate: '', notes: '' });
         setIsAdding(false);
         toast.success('Registro añadido exitosamente');
+        router.refresh();
       } else {
         toast.error('Error al añadir');
       }
@@ -85,6 +93,7 @@ export default function ExpirationsClient({ initialItems, inventoryItems }: { in
       if (res.ok) {
         setItems(prev => prev.filter(i => i.id !== id));
         toast.success('Eliminado');
+        router.refresh();
       } else {
         toast.error('Error al eliminar');
       }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { AlertTriangle, Package, Save, CheckCircle2, CalendarDays, Plus, Trash2, Edit2, X } from 'lucide-react';
@@ -17,7 +18,13 @@ type InventoryItem = {
 };
 
 export default function InventoryClient({ initialItems }: { initialItems: InventoryItem[] }) {
+  const router = useRouter();
   const [items, setItems] = useState(initialItems);
+  
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
   const [savingId, setSavingId] = useState<string | null>(null);
   
   // Adding state
@@ -42,6 +49,7 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
       if (res.ok) {
         setItems(items.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
         toast.success("Inventario actualizado", { id: toastId });
+        router.refresh();
       } else {
         toast.error("Error al actualizar inventario", { id: toastId });
       }
@@ -70,6 +78,7 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
         setIsAdding(false);
         setNewItem({ name: '', quantity: 0, unit: '', lowThreshold: 5 });
         toast.success("Item creado", { id: toastId });
+        router.refresh();
       } else {
         toast.error("Error al crear", { id: toastId });
       }
@@ -86,6 +95,7 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
       if (res.ok) {
         setItems(items.filter(i => i.id !== id));
         toast.success("Item eliminado", { id: toastId });
+        router.refresh();
       } else {
         toast.error("Error al eliminar", { id: toastId });
       }
@@ -108,6 +118,7 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
         setItems(items.map(item => item.id === id ? { ...item, ...updated } : item));
         setEditingId(null);
         toast.success("Item actualizado", { id: toastId });
+        router.refresh();
       } else {
         toast.error("Error al actualizar", { id: toastId });
       }

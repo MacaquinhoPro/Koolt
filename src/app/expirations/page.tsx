@@ -1,6 +1,8 @@
 import ExpirationsClient from './ExpirationsClient';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ExpirationsPage() {
   const initialItems = await prisma.expirationItem.findMany({
     include: { inventoryItem: true },

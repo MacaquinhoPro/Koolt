@@ -157,8 +157,10 @@ export default function DashboardClient({ products }: { products: Product[] }) {
         })
       });
       if (res.ok) {
+        console.log('Pedido creado exitosamente en el servidor');
         toast.success(`¡Pedido creado correctamente!`, { id: toastId });
         setCart([]);
+        router.refresh();
       } else {
         toast.error("Error al confirmar el pedido.", { id: toastId });
       }
