@@ -18,20 +18,53 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const { id } = await params;
     const body = await req.json();
+    const { ingredients, ...productData } = body;
+    
+    console.log('PATCH body:', JSON.stringify(body));
+    console.log('PATCH ingredients:', JSON.stringify(ingredients));
+    
+    if (ingredients) {
+      console.log('Deleting existing ingredients for product:', id);
+      await prisma.productIngredient.deleteMany({ where: { productId: id } });
+      
+      if (ingredients.length > 0) {
+        console.log('Creating new ingredients:', ingredients);
+        await prisma.productIngredient.createMany({
+          data: ingredients.map((ing: { inventoryItemId: string; quantity: number }) => ({
+            productId: id,
+            inventoryItemId: ing.inventoryItemId,
+            quantity: parseFloat(ing.quantity)
+          }))
+        });
+      }
+    }
     
     const updateData: any = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.price !== undefined) updateData.price = parseFloat(body.price);
-    if (body.category !== undefined) updateData.category = body.category;
-    if (body.includedToppings !== undefined) updateData.includedToppings = parseInt(body.includedToppings);
+    if (productData.name !== undefined) updateData.name = productData.name;
+    if (productData.price !== undefined) updateData.price = parseFloat(productData.price);
+    if (productData.category !== undefined) updateData.category = productData.category;
+    if (productData.includedToppings !== undefined) updateData.includedToppings = parseInt(productData.includedToppings);
 
     const updated = await prisma.product.update({
       where: { id },
-      data: updateData
+      data: updateData,
+      include: { ingredients: { include: { inventoryItem: true } } }
     });
-    return NextResponse.json(updated);
-  } catch (err) {
+    
+    console.log('Updated product ingredients:', JSON.stringify(updated.ingredients));
+    
+    const formatted = {
+      ...updated,
+      ingredients: updated.ingredients.map(i => ({
+        inventoryItemId: i.inventoryItemId,
+        quantity: i.quantity,
+        inventoryItem: i.inventoryItem
+      }))
+    };
+    
+    return NextResponse.json(formatted);
+  } catch (err: any) {
     console.error('PATCH /api/products/[id] error:', err);
-    return NextResponse.json({ error: 'Failed to update product details' }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'Failed to update product details' }, { status: 500 });
   }
 }

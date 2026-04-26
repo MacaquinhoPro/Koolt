@@ -16,6 +16,16 @@ model Product {
   includedToppings Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  ingredients     ProductIngredient[]
+}
+
+model ProductIngredient {
+  id               String @id @default(uuid())
+  productId        String
+  product         Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryItemId  String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantity       Float
 }
 
 model InventoryItem {
@@ -23,10 +33,11 @@ model InventoryItem {
   name            String
   quantity        Float    @default(0)
   unit            String
-  lowThreshold    Float            @default(5)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  lowThreshold    Float    @default(5)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   expirationItems ExpirationItem[]
+  products       ProductIngredient[]
 }
 
 model Order {

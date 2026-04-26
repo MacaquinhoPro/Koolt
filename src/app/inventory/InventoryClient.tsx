@@ -44,7 +44,9 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
 
   // Editing state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<InventoryItem>>({});
+  const [editQuantity, setEditQuantity] = useState<number>(0);
+  const [editThreshold, setEditThreshold] = useState<number>(5);
+  const [editForm, setEditForm] = useState<{ name?: string; unit?: string }>({});
 
   const lowStockItems = items.filter(item => item.quantity <= item.lowThreshold);
 
@@ -58,8 +60,9 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
         body: JSON.stringify({ id, quantity: newQuantity })
       });
       if (res.ok) {
+        const updated = await res.json();
+        setItems(prev => prev.map(item => item.id === id ? { ...item, ...updated } : item));
         toast.success("Inventario actualizado", { id: toastId });
-        router.refresh();
       } else {
         toast.error("Error al actualizar", { id: toastId });
       }
@@ -83,10 +86,11 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
         body: JSON.stringify(newItem)
       });
       if (res.ok) {
+        const newItemData = await res.json();
+        setItems(prev => [...prev, newItemData]);
         setIsAdding(false);
         setNewItem({ name: '', quantity: 0, unit: '', lowThreshold: 5 });
         toast.success("Item creado", { id: toastId });
-        router.refresh();
       } else {
         toast.error("Error al crear", { id: toastId });
       }
@@ -101,8 +105,8 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
     try {
       const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE' });
       if (res.ok) {
+        setItems(prev => prev.filter(item => item.id !== id));
         toast.success("Item eliminado", { id: toastId });
-        router.refresh();
       } else {
         toast.error("Error al eliminar", { id: toastId });
       }
@@ -118,12 +122,17 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
       const res = await fetch(`/api/inventory/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify({ 
+          name: editForm.name || item.name, 
+          unit: editForm.unit || item.unit,
+          quantity: editQuantity,
+          lowThreshold: editThreshold 
+        })
       });
       if (res.ok) {
+        setItems(prev => prev.map(item => item.id === id ? { ...item, quantity: editQuantity, lowThreshold: editThreshold, name: editForm.name || item.name, unit: editForm.unit || item.unit } : item));
         setEditingId(null);
         toast.success("Item actualizado", { id: toastId });
-        router.refresh();
       } else {
         toast.error("Error al actualizar", { id: toastId });
       }
@@ -208,8 +217,8 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
              </h2>
              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Consumo en Tiempo Real</span>
           </div>
-          <div style={{ flex: 1 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border-color)" />
                 <XAxis type="number" hide />
@@ -326,43 +335,42 @@ export default function InventoryClient({ initialItems }: { initialItems: Invent
                         )}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ 
-                            fontSize: '1.25rem', 
-                            fontWeight: '800', 
-                            color: isLow ? 'var(--danger)' : 'var(--text-primary)' 
-                          }}>
-                            {item.quantity}
-                          </span>
-                          {!isEditing && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/ Min: {item.lowThreshold}</span>}
-                          {isEditing && (
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                              <span>/ Min</span>
-                              <input type="number" style={{ width: '80px' }} value={editForm.lowThreshold ?? item.lowThreshold} onChange={e => setEditForm({...editForm, lowThreshold: parseFloat(e.target.value)})} />
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td>
                         {isEditing ? (
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn btn-primary" onClick={() => handleSaveEdit(item.id)} disabled={savingId === item.id}>
-                              <CheckCircle2 size={18} /> Confirmar
-                            </button>
-                            <button className="btn btn-danger" onClick={() => setEditingId(null)}>
-                              <X size={18} />
-                            </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <input 
+                                type="number" 
+                                style={{ width: '60px', padding: '0.375rem', fontSize: '0.875rem', textAlign: 'center' }} 
+                                value={editQuantity} 
+                                onChange={e => setEditQuantity(parseFloat(e.target.value))} 
+                              />
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Min:</span>
+                              <input 
+                                type="number" 
+                                style={{ width: '60px', padding: '0.375rem', fontSize: '0.875rem', textAlign: 'center' }} 
+                                value={editThreshold} 
+                                onChange={e => setEditThreshold(parseFloat(e.target.value))} 
+                              />
+                            </div>
+                            <button className="btn btn-primary" style={{ padding: '0.375rem 0.75rem' }} onClick={() => handleSaveEdit(item.id)} disabled={savingId === item.id}>Guardar</button>
+                            <button className="btn" style={{ padding: '0.375rem', background: 'transparent' }} onClick={() => setEditingId(null)}>X</button>
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => { setEditingId(item.id); setEditForm(item); }} title="Editar">
-                              <Edit2 size={18} />
-                            </button>
-                            <button className="btn btn-danger" style={{ padding: '0.5rem', background: 'transparent' }} onClick={() => handleDelete(item.id)} title="Eliminar">
-                              <Trash2 size={18} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '1.125rem', fontWeight: '800', color: isLow ? 'var(--danger)' : 'var(--text-primary)' }}>
+                              {item.quantity}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>/ {item.lowThreshold}</span>
+                            <button className="btn btn-secondary" style={{ padding: '0.375rem', marginLeft: 'auto' }} onClick={() => { setEditingId(item.id); setEditQuantity(item.quantity); setEditThreshold(item.lowThreshold); setEditForm({ name: item.name, unit: item.unit }); }}>
+                              <Edit2 size={16} />
                             </button>
                           </div>
                         )}
+                      </td>
+                      <td>
+                        <button className="btn btn-danger" style={{ padding: '0.375rem', background: 'transparent' }} onClick={() => handleDelete(item.id)}>
+                          <Trash2 size={16} />
+                        </button>
                       </td>
                     </motion.tr>
                   );

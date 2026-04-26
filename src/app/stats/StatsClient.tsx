@@ -78,7 +78,7 @@ export default function StatsClient() {
     const titulo = `REPORTE DE VENTAS - KOOLT HELADERÍA`;
     const periodo = filter === 'today' ? 'HOY' : filter === 'week' ? 'ÚLTIMA SEMANA' : filter === 'month' ? 'ÚLTIMO MES' : filter === '3months' ? 'ÚLTIMOS 3 MESES' : filter === 'all' ? 'TODO EL HISTÓRICO' : 'PERSONALIZADO';
 
-    const infoSheet = [
+    const infoSheet: any[] = [
       { Metrica: "", Valor: "" },
       { Metrica: "═══════════════════════════════════════════════════", Valor: "═══════════════════════════════════════" },
       { Metrica: titulo, Valor: "" },
@@ -106,7 +106,7 @@ export default function StatsClient() {
       { Metrica: "Productos sin ventas", Valor: data.zeroSales.length > 0 ? data.zeroSales.join(', ') : "Todos tienen ventas" },
     ];
 
-    const ventasSheet = [
+    const ventasSheet: any[] = [
       { Metrica: "--- DETALLE DE UNIDADES VENDIDAS POR PRODUCTO ---", Valor: "Unidades", Valor2: "Ingresos Estimados" },
     ];
     Object.entries(data.productSales || {}).forEach(([pName, count]) => {
@@ -122,7 +122,7 @@ export default function StatsClient() {
       ventasSheet.push({ Metrica: d.date, Valor: "$" + d.amount.toLocaleString('es-CO'), Valor2: pedidosEst });
     });
 
-    const resumenSheet = [
+    const resumenSheet: any[] = [
       { Metrica: "════════════════════════════════════", Valor: "════════════════════════════", Valor2: "═══════════" },
       { Metrica: "RESUMEN DE VENTAS", Valor: "", Valor2: "" },
       { Metrica: "════════════════════════════════════", Valor: "════════════════════════════", Valor2: "═══════════" },
@@ -277,9 +277,9 @@ export default function StatsClient() {
               <BarChart3 className="text-primary" size={24} /> Desempeño de Ventas
             </h3>
           </div>
-          <div style={{ flex: 1, minHeight: 280 }}>
+          <div style={{ flex: 1, minHeight: 280, minWidth: 0 }}>
             {data.chartData && data.chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={data.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">

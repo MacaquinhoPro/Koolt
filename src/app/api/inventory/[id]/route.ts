@@ -22,6 +22,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.unit !== undefined) updateData.unit = body.unit;
+    if (body.quantity !== undefined) updateData.quantity = parseFloat(body.quantity);
     if (body.lowThreshold !== undefined) updateData.lowThreshold = parseFloat(body.lowThreshold);
 
     const updated = await prisma.inventoryItem.update({

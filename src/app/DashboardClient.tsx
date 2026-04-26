@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
@@ -25,6 +24,14 @@ type Product = {
   category: string;
   price: number;
   includedToppings: number;
+  ingredients?: { inventoryItemId: string; quantity: number; inventoryItem?: { name: string; unit: string } }[];
+};
+
+type InventoryItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
 };
 
 type CartItem = {
@@ -45,16 +52,17 @@ const categoryColors: Record<string, string> = {
   TOPPING: '#8b5cf6'
 };
 
-export default function DashboardClient({ products }: { products: Product[] }) {
-  const router = useRouter();
-  const [productsList] = useState<Product[]>(products);
+export default function DashboardClient({ products: initialProducts, inventory }: { products: Product[], inventory: InventoryItem[] }) {
+  const [productsList, setProductsList] = useState<Product[]>(initialProducts);
+  const [itemsList] = useState<InventoryItem[]>(inventory);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
 
   const [isEditingMode, setIsEditingMode] = useState(false);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [productForm, setProductForm] = useState<Partial<Product>>({ name: '', category: 'YOGURT', price: 0, includedToppings: 0 });
+  const [productForm, setProductForm] = useState<Partial<Product>>({ name: '', category: 'YOGURT', price: 0, includedToppings: 0, ingredients: [] });
+  const [formIngredients, setFormIngredients] = useState<{inventoryItemId: string, quantity: number}[]>([]);
 
   const [selectedToppings, setSelectedToppings] = useState<Product[]>([]);
   const [hasMerengue, setHasMerengue] = useState(false);
@@ -66,9 +74,15 @@ export default function DashboardClient({ products }: { products: Product[] }) {
     if (p) {
       setEditingProduct(p);
       setProductForm({ name: p.name, category: p.category, price: p.price, includedToppings: p.includedToppings });
+      const savedIngredients = (p.ingredients || []).map(i => ({
+        inventoryItemId: i.inventoryItemId,
+        quantity: i.quantity
+      }));
+      setFormIngredients(savedIngredients);
     } else {
       setEditingProduct(null);
-      setProductForm({ name: '', category: 'YOGURT', price: 0, includedToppings: 0 });
+      setProductForm({ name: '', category: 'YOGURT', price: 0, includedToppings: 0, ingredients: [] });
+      setFormIngredients([]);
     }
     setIsProductFormOpen(true);
   };
@@ -77,17 +91,36 @@ export default function DashboardClient({ products }: { products: Product[] }) {
     if (!productForm.name || !productForm.price) {
       toast.error('Nombre y precio requeridos'); return;
     }
+    
     const toastId = toast.loading('Guardando...');
     try {
+      const payload = {
+        ...productForm,
+        ingredients: formIngredients.length > 0 ? formIngredients : undefined
+      };
+      
       const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
       const method = editingProduct ? 'PATCH' : 'POST';
       const res = await fetch(url, {
-        method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(productForm)
+        method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
       if (res.ok) {
         toast.success(`Producto ${editingProduct ? 'actualizado' : 'creado'}`, { id: toastId });
         setIsProductFormOpen(false);
-        router.refresh();
+        
+        const resProducts = await fetch('/api/products');
+        const updatedProducts = await resProducts.json();
+        
+        const formatted = updatedProducts.map((p: any) => ({
+          ...p,
+          ingredients: (p.ingredients || []).map((i: any) => ({
+            inventoryItemId: i.inventoryItemId,
+            quantity: i.quantity,
+            inventoryItem: i.inventoryItem
+          }))
+        }));
+        
+        setProductsList(formatted);
       } else {
         toast.error('Error al guardar', { id: toastId });
       }
@@ -104,7 +137,7 @@ export default function DashboardClient({ products }: { products: Product[] }) {
       const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast.success('Producto eliminado', { id: toastId });
-        router.refresh();
+        setProductsList(prev => prev.filter(p => p.id !== id));
       } else {
         toast.error('Error al eliminar', { id: toastId });
       }
@@ -173,7 +206,6 @@ export default function DashboardClient({ products }: { products: Product[] }) {
       if (res.ok) {
         toast.success(`Pedido creado correctamente`, { id: toastId });
         setCart([]);
-        router.refresh();
       } else {
         toast.error("Error al confirmar el pedido.", { id: toastId });
       }
@@ -638,6 +670,66 @@ export default function DashboardClient({ products }: { products: Product[] }) {
                       onChange={e => setProductForm({...productForm, includedToppings: parseInt(e.target.value) || 0})} 
                       style={{ width: '100%', padding: '0.875rem 1rem', border: '1px solid #e4e4e7', borderRadius: '12px', fontSize: '0.9375rem', outline: 'none' }}
                     />
+                  </div>
+                )}
+
+                {productForm.category !== 'TOPPING' && itemsList && itemsList.length > 0 && (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: '#52525b' }}>
+                      Insumos necesarios
+                    </label>
+                    {itemsList.map(item => {
+                      const ingredient = formIngredients.find(i => i.inventoryItemId === item.id);
+                      return (
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', padding: '0.5rem', background: '#fafafa', borderRadius: '8px' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!ingredient}
+                            onChange={e => {
+                              const newIngredients = formIngredients.filter(i => i.inventoryItemId !== item.id);
+                              if (e.target.checked) {
+                                newIngredients.push({ inventoryItemId: item.id, quantity: 1 });
+                              }
+                              setFormIngredients([...newIngredients]);
+                            }}
+                            style={{ width: 16, height: 16 }}
+                          />
+                          <span style={{ flex: 1, fontSize: '0.875rem' }}>{item.name}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Cant"
+                            value={ingredient?.quantity || ''}
+                            onChange={e => {
+                              const qty = parseFloat(e.target.value) || 0;
+                              const current = formIngredients.filter(i => i.inventoryItemId !== item.id);
+                              if (qty > 0) {
+                                setFormIngredients([...current, { inventoryItemId: item.id, quantity: qty }]);
+                              } else {
+                                setFormIngredients(current);
+                              }
+                            }}
+                            style={{ width: '70px', padding: '0.375rem', border: '1px solid #e4e4e7', borderRadius: '6px', fontSize: '0.8125rem' }}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: '#71717a' }}>{item.unit}</span>
+                        </div>
+                      );
+                    })}
+                    
+                    {formIngredients.length > 0 && (
+                      <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#fdf2f8', borderRadius: '8px', border: '1px solid #fbcfe8' }}>
+                        <p style={{ fontSize: '0.75rem', color: '#be185d', fontWeight: 600, marginBottom: '0.25rem' }}>Se usará por cada producto:</p>
+                        {formIngredients.map(ing => {
+                          const item = itemsList.find(i => i.id === ing.inventoryItemId);
+                          return item ? (
+                            <p key={ing.inventoryItemId} style={{ fontSize: '0.8125rem', color: '#831843' }}>
+                              {item.name}: {ing.quantity} {item.unit}
+                            </p>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
                 

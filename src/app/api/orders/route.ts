@@ -21,37 +21,47 @@ export async function POST(req: Request) {
       }
     });
 
-    // Reduce inventory strictly mapping strings for simplicity
+    // Get current inventory
     const allInventory = await prisma.inventoryItem.findMany();
-    for (const item of items) {
-      // 1 cuchara per item except "Cono"
-      if (item.category !== 'CONO') {
-        const cuchara = allInventory.find(i => i.name.toLowerCase().includes('cuchara'));
-        if (cuchara) await prisma.inventoryItem.update({ where: { id: cuchara.id }, data: { quantity: Math.max(0, cuchara.quantity - 1) } });
-      }
+    console.log('Inventory items:', allInventory.map(i => ({ id: i.id, name: i.name, qty: i.quantity })));
+    const inventoryMap = new Map(allInventory.map(i => [i.id, i]));
 
-      // Vaso or Mezcla logic 
-      if (item.category === 'YOGURT') {
-        const mezcla = allInventory.find(i => i.name.toLowerCase().includes('mezcla'));
-        if (mezcla) await prisma.inventoryItem.update({ where: { id: mezcla.id }, data: { quantity: Math.max(0, mezcla.quantity - 0.1) } }); // approx 0.1L per yogurt
-        
-        const sizeLower = item.productName.toLowerCase();
-        let vasoName = '';
-        if (sizeLower.includes('pequeño')) vasoName = 'vasos pequeños';
-        if (sizeLower.includes('mediano')) vasoName = 'vasos medianos';
-        if (sizeLower.includes('grande')) vasoName = 'vasos grandes';
-        
-        const vaso = allInventory.find(i => i.name.toLowerCase() === vasoName);
-        if (vaso) await prisma.inventoryItem.update({ where: { id: vaso.id }, data: { quantity: Math.max(0, vaso.quantity - 1) } });
-      } else if (item.category === 'GRANIZADO') {
-        const vaso = allInventory.find(i => i.name.toLowerCase() === 'vasos grandes');
-        if (vaso) await prisma.inventoryItem.update({ where: { id: vaso.id }, data: { quantity: Math.max(0, vaso.quantity - 1) } });
+    // Get all products with their ingredients
+    const productIds = [...new Set(items.map((i: any) => i.productId))];
+    console.log('Items in order:', items.map((i: any) => ({ productId: i.productId, productName: i.productName })));
+    console.log('Product IDs:', productIds);
+    
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      include: { ingredients: true }
+    });
+
+    console.log('Products in order:', JSON.stringify(products.map(p => ({ id: p.id, name: p.name, ingredients: p.ingredients }))));
+
+    // Reduce inventory based on product ingredients (quantity per item)
+    for (const item of items) {
+      const product = products.find(p => p.id === item.productId);
+      console.log('Processing item:', item.productName, 'product:', product?.name, 'ingredients:', product?.ingredients?.length);
+      
+      if (product && product.ingredients && product.ingredients.length > 0) {
+        for (const ing of product.ingredients) {
+          const invItem = inventoryMap.get(ing.inventoryItemId);
+          console.log('Reducing inventory:', invItem?.name, 'by', ing.quantity, 'current:', invItem?.quantity);
+          if (invItem) {
+            await prisma.inventoryItem.update({
+              where: { id: invItem.id },
+              data: { quantity: Math.max(0, invItem.quantity - ing.quantity) }
+            });
+          }
+        }
+      } else {
+        console.log('No ingredients found for product:', product?.name);
       }
     }
 
     return NextResponse.json(order);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Order error:', error.message, error.stack);
+    return NextResponse.json({ error: 'Failed to create order: ' + error.message }, { status: 500 });
   }
 }
