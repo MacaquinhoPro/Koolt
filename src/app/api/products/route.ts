@@ -7,7 +7,7 @@ export async function GET() {
       orderBy: { price: 'asc' },
       include: { ingredients: { include: { inventoryItem: true } } }
     });
-    
+
     const formatted = products.map(p => ({
       ...p,
       ingredients: p.ingredients.map(i => ({
@@ -16,7 +16,7 @@ export async function GET() {
         inventoryItem: i.inventoryItem
       }))
     }));
-    
+
     return NextResponse.json(formatted);
   } catch (error) {
     console.error('GET /api/products error:', error);
@@ -28,9 +28,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { ingredients, ...productData } = body;
-    
+
     console.log('POST ingredients:', JSON.stringify(ingredients));
-    
+
     const product = await prisma.product.create({
       data: {
         name: productData.name,
@@ -48,9 +48,9 @@ export async function POST(req: Request) {
       },
       include: { ingredients: { include: { inventoryItem: true } } }
     });
-    
+
     console.log('Created product with ingredients:', JSON.stringify(product.ingredients));
-    
+
     const formatted = {
       ...product,
       ingredients: product.ingredients.map(i => ({
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
         inventoryItem: i.inventoryItem
       }))
     };
-    
+
     return NextResponse.json(formatted);
   } catch (err: any) {
     console.error('POST /api/products error:', err);

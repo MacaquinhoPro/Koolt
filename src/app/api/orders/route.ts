@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const productIds = [...new Set(items.map((i: any) => i.productId))];
     console.log('Items in order:', items.map((i: any) => ({ productId: i.productId, productName: i.productName })));
     console.log('Product IDs:', productIds);
-    
+
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       include: { ingredients: true }
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     for (const item of items) {
       const product = products.find(p => p.id === item.productId);
       console.log('Processing item:', item.productName, 'product:', product?.name, 'ingredients:', product?.ingredients?.length);
-      
+
       if (product && product.ingredients && product.ingredients.length > 0) {
         for (const ing of product.ingredients) {
           const invItem = inventoryMap.get(ing.inventoryItemId);

@@ -19,14 +19,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
     const { ingredients, ...productData } = body;
-    
+
     console.log('PATCH body:', JSON.stringify(body));
     console.log('PATCH ingredients:', JSON.stringify(ingredients));
-    
+
     if (ingredients) {
       console.log('Deleting existing ingredients for product:', id);
       await prisma.productIngredient.deleteMany({ where: { productId: id } });
-      
+
       if (ingredients.length > 0) {
         console.log('Creating new ingredients:', ingredients);
         await prisma.productIngredient.createMany({
@@ -38,7 +38,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         });
       }
     }
-    
+
     const updateData: any = {};
     if (productData.name !== undefined) updateData.name = productData.name;
     if (productData.price !== undefined) updateData.price = parseFloat(productData.price);
@@ -50,9 +50,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       data: updateData,
       include: { ingredients: { include: { inventoryItem: true } } }
     });
-    
+
     console.log('Updated product ingredients:', JSON.stringify(updated.ingredients));
-    
+
     const formatted = {
       ...updated,
       ingredients: updated.ingredients.map(i => ({
@@ -61,7 +61,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         inventoryItem: i.inventoryItem
       }))
     };
-    
+
     return NextResponse.json(formatted);
   } catch (err: any) {
     console.error('PATCH /api/products/[id] error:', err);
