@@ -30,10 +30,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (ingredients.length > 0) {
         console.log('Creating new ingredients:', ingredients);
         await prisma.productIngredient.createMany({
-          data: ingredients.map((ing: { inventoryItemId: string; quantity: number }) => ({
+          data: ingredients.map((ing: { inventoryItemId: string; quantity: number | string }) => ({
             productId: id,
             inventoryItemId: ing.inventoryItemId,
-            quantity: parseFloat(ing.quantity)
+            quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) : ing.quantity
           }))
         });
       }

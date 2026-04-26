@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const inventoryMap = new Map(allInventory.map(i => [i.id, i]));
 
     // Get all products with their ingredients
-    const productIds = [...new Set(items.map((i: any) => i.productId))];
+    const productIds = [...new Set(items.map((i: any) => i.productId))] as string[];
     console.log('Items in order:', items.map((i: any) => ({ productId: i.productId, productName: i.productName })));
     console.log('Product IDs:', productIds);
 

@@ -39,9 +39,9 @@ export async function POST(req: Request) {
         includedToppings: parseInt(productData.includedToppings || '0'),
         ...(ingredients && ingredients.length > 0 ? {
           ingredients: {
-            create: ingredients.map((ing: { inventoryItemId: string; quantity: number }) => ({
+            create: ingredients.map((ing: { inventoryItemId: string; quantity: number | string }) => ({
               inventoryItemId: ing.inventoryItemId,
-              quantity: parseFloat(ing.quantity)
+              quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) : ing.quantity
             }))
           }
         } : {})
