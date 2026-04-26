@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -13,14 +13,10 @@ import {
   Check, 
   Trash2, 
   Plus, 
-  Edit2, 
-  Settings2, 
-  ShoppingCart, 
+  Edit2,
   CreditCard, 
   Banknote,
-  Sparkles,
-  ChevronRight,
-  Info
+  ChevronRight
 } from 'lucide-react';
 
 type Product = {
@@ -41,27 +37,28 @@ type CartItem = {
   merengue: boolean;
 };
 
+const categoryColors: Record<string, string> = {
+  YOGURT: '#ec4899',
+  GRANIZADO: '#0ea5e9',
+  BROWNIE: '#92400e',
+  CONO: '#f59e0b',
+  TOPPING: '#8b5cf6'
+};
+
 export default function DashboardClient({ products }: { products: Product[] }) {
   const router = useRouter();
-  const [productsList, setProductsList] = useState<Product[]>(products);
+  const [productsList] = useState<Product[]>(products);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  
-  useEffect(() => {
-    setProductsList(products);
-  }, [products]);
 
-  // Product Management States
   const [isEditingMode, setIsEditingMode] = useState(false);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<Partial<Product>>({ name: '', category: 'YOGURT', price: 0, includedToppings: 0 });
 
-  // Modal states
   const [selectedToppings, setSelectedToppings] = useState<Product[]>([]);
   const [hasMerengue, setHasMerengue] = useState(false);
 
-  // Grouped products
   const bases = productsList.filter(p => p.category !== 'TOPPING');
   const availableToppings = productsList.filter(p => p.category === 'TOPPING');
 
@@ -185,22 +182,11 @@ export default function DashboardClient({ products }: { products: Product[] }) {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    const style = { strokeWidth: 1.5 };
-    switch (category) {
-      case 'YOGURT': return <IceCream2 size={32} className="text-primary" {...style} />;
-      case 'GRANIZADO': return <CupSoda size={32} style={{ color: '#0ea5e9' }} {...style} />;
-      case 'BROWNIE': return <CakeSlice size={32} style={{ color: '#92400e' }} {...style} />;
-      case 'CONO': return <IceCream2 size={32} style={{ color: '#f59e0b' }} {...style} />;
-      default: return <Sparkles size={32} className="text-primary" {...style} />;
-    }
-  };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1,
-      transition: { staggerChildren: 0.05 }
+      transition: { staggerChildren: 0.04 }
     }
   };
 
@@ -210,18 +196,26 @@ export default function DashboardClient({ products }: { products: Product[] }) {
   };
 
   return (
-    <div className="dashboard-layout" style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 120px)' }}>
-      {/* Product Selection List */}
-      <div className="dashboard-panel-left" style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
+    <div style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 120px)' }}>
+      {/* Left Panel - Products */}
+      <div style={{ flex: 2.2, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '1.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <ShoppingBag className="text-primary" /> Productos Disponibles
-          </h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#18181b' }}>Menú</h2>
           <button 
-            className={`btn ${isEditingMode ? 'btn-danger' : 'btn-secondary'}`} 
             onClick={() => setIsEditingMode(!isEditingMode)}
+            style={{
+              padding: '0.625rem 1.25rem',
+              borderRadius: '12px',
+              border: 'none',
+              background: isEditingMode ? '#18181b' : '#f4f4f5',
+              color: isEditingMode ? 'white' : '#52525b',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
           >
-            <Settings2 size={18} /> {isEditingMode ? 'Cerrar Gestión' : 'Gestionar'}
+            {isEditingMode ? 'Listo' : 'Gestionar'}
           </button>
         </div>
         
@@ -229,8 +223,7 @@ export default function DashboardClient({ products }: { products: Product[] }) {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid-container"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}
         >
           <AnimatePresence>
             {bases.map((p) => (
@@ -238,64 +231,52 @@ export default function DashboardClient({ products }: { products: Product[] }) {
                 key={p.id}
                 variants={itemVariants}
                 layout
-                whileHover={!isEditingMode ? { y: -8, boxShadow: 'var(--shadow-xl)' } : {}}
-                whileTap={!isEditingMode ? { scale: 0.98 } : {}}
+                whileHover={!isEditingMode ? { y: -4, scale: 1.01 } : {}}
+                whileTap={!isEditingMode ? { scale: 0.99 } : {}}
                 onClick={() => !isEditingMode && openProductModal(p)}
-                className="card"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  textAlign: 'center',
-                  gap: '1rem',
+                  gap: '0.75rem',
                   cursor: isEditingMode ? 'default' : 'pointer',
                   position: 'relative',
-                  padding: '2rem 1.5rem',
-                  border: isEditingMode ? '1px dashed var(--border-color)' : '1px solid var(--border-color)'
+                  padding: '1.75rem 1.25rem',
+                  background: 'white',
+                  borderRadius: '24px',
+                  border: isEditingMode ? '2px dashed #e4e4e7' : '1px solid #f4f4f5',
+                  boxShadow: isEditingMode ? 'none' : '0 1px 3px rgba(0,0,0,0.04)'
                 }}
               >
                 <div style={{ 
-                  padding: '1.25rem', 
-                  background: 'var(--bg-color)', 
-                  borderRadius: '1.5rem',
+                  padding: '1rem', 
+                  borderRadius: '20px',
+                  background: `${categoryColors[p.category]}15`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  {getCategoryIcon(p.category)}
+                  {p.category === 'YOGURT' && <IceCream2 size={28} style={{ color: categoryColors[p.category] }} />}
+                  {p.category === 'GRANIZADO' && <CupSoda size={28} style={{ color: categoryColors[p.category] }} />}
+                  {p.category === 'BROWNIE' && <CakeSlice size={28} style={{ color: categoryColors[p.category] }} />}
+                  {p.category === 'CONO' && <IceCream2 size={28} style={{ color: categoryColors[p.category] }} />}
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: '700', marginBottom: '0.25rem' }}>{p.name}</h3>
-                  <p style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '1.25rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#18181b', marginBottom: '0.125rem' }}>{p.name}</h3>
+                  <p style={{ color: '#ec4899', fontWeight: 700, fontSize: '1.125rem' }}>
                     ${p.price.toLocaleString('es-CO')}
                   </p>
                 </div>
 
                 {isEditingMode && (
-                  <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={(e) => { e.stopPropagation(); openProductForm(p); }} className="btn" style={{ padding: '0.5rem', background: 'var(--bg-color)' }}>
-                      <Edit2 size={16} className="text-primary" />
+                  <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: '0.375rem' }}>
+                    <button onClick={(e) => { e.stopPropagation(); openProductForm(p); }} style={{ padding: '0.375rem', background: '#fafafa', border: '1px solid #e4e4e7', borderRadius: '8px', cursor: 'pointer' }}>
+                      <Edit2 size={14} style={{ color: '#a1a1aa' }} />
                     </button>
-                    <button onClick={(e) => deleteProduct(p.id, e)} className="btn" style={{ padding: '0.5rem', background: 'var(--danger-soft)' }}>
-                      <Trash2 size={16} className="text-danger" />
+                    <button onClick={(e) => deleteProduct(p.id, e)} style={{ padding: '0.375rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', cursor: 'pointer' }}>
+                      <Trash2 size={14} style={{ color: '#ef4444' }} />
                     </button>
-                  </div>
-                )}
-                
-                {!isEditingMode && (
-                  <div style={{ 
-                    position: 'absolute', 
-                    bottom: 0, 
-                    right: 0, 
-                    background: 'var(--primary)', 
-                    color: 'white', 
-                    padding: '0.5rem', 
-                    borderRadius: 'var(--radius-lg) 0 var(--radius-lg) 0',
-                    opacity: 0,
-                    transition: 'opacity 0.2s'
-                  }} className="card-add-indicator">
-                    <Plus size={16} />
                   </div>
                 )}
               </motion.div>
@@ -307,91 +288,77 @@ export default function DashboardClient({ products }: { products: Product[] }) {
                variants={itemVariants}
                whileHover={{ scale: 1.02 }}
                whileTap={{ scale: 0.98 }}
-               className="card"
                onClick={() => openProductForm()}
-               style={{ border: '2px dashed var(--primary)', background: 'var(--primary-soft)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '200px', cursor: 'pointer' }}
+               style={{ border: '2px dashed #d4d4d8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '160px', cursor: 'pointer', borderRadius: '24px', background: '#fafafa' }}
              >
-               <Plus size={40} className="text-primary" />
-               <h3 className="text-primary">Añadir Base</h3>
+               <Plus size={32} style={{ color: '#a1a1aa' }} />
+               <span style={{ color: '#71717a', fontWeight: 600, fontSize: '0.875rem', marginTop: '0.5rem' }}>Añadir Base</span>
              </motion.div>
           )}
         </motion.div>
 
         {isEditingMode && (
-          <div style={{ marginTop: '1rem' }}>
-            <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <Sparkles className="text-primary" /> Toppings Disponibles
-            </h2>
+          <div style={{ marginTop: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#52525b', marginBottom: '1rem' }}>Toppings</h3>
             <motion.div 
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid-container"
-              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}
             >
               {availableToppings.map((p) => (
-                <motion.div key={p.id} variants={itemVariants} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem' }}>
+                <motion.div key={p.id} variants={itemVariants} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1rem', background: 'white', borderRadius: '16px', border: '1px solid #f4f4f5' }}>
                   <div>
-                    <h4 style={{ fontWeight: '600' }}>{p.name}</h4>
-                    <p style={{ color: 'var(--primary)', fontWeight: '700' }}>${p.price.toLocaleString('es-CO')}</p>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#18181b' }}>{p.name}</h4>
+                    <p style={{ color: '#ec4899', fontWeight: 700, fontSize: '0.875rem' }}>+${p.price.toLocaleString('es-CO')}</p>
                   </div>
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    <button onClick={(e) => { e.stopPropagation(); openProductForm(p); }} className="btn" style={{ padding: '0.4rem' }}>
-                      <Edit2 size={14} className="text-primary" />
+                    <button onClick={(e) => { e.stopPropagation(); openProductForm(p); }} style={{ padding: '0.25rem', background: '#fafafa', border: '1px solid #e4e4e7', borderRadius: '6px', cursor: 'pointer' }}>
+                      <Edit2 size={12} style={{ color: '#a1a1aa' }} />
                     </button>
-                    <button onClick={(e) => deleteProduct(p.id, e)} className="btn" style={{ padding: '0.4rem' }}>
-                      <Trash2 size={14} className="text-danger" />
+                    <button onClick={(e) => deleteProduct(p.id, e)} style={{ padding: '0.25rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer' }}>
+                      <Trash2 size={12} style={{ color: '#ef4444' }} />
                     </button>
                   </div>
                 </motion.div>
               ))}
               <motion.div 
                  variants={itemVariants}
-                 className="card"
                  onClick={() => {
                    setEditingProduct(null);
                    setProductForm({ name: '', category: 'TOPPING', price: 0, includedToppings: 0 });
                    setIsProductFormOpen(true);
                  }}
-                 style={{ border: '1px dashed var(--primary)', background: 'var(--primary-soft)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '1rem' }}
+                 style={{ border: '2px dashed #e4e4e7', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.875rem', borderRadius: '16px', background: '#fafafa' }}
                >
-                 <Plus size={18} className="text-primary" />
-                 <span className="text-primary" style={{ fontWeight: '600' }}>Añadir Topping</span>
+                 <Plus size={16} style={{ color: '#a1a1aa' }} />
+                 <span style={{ color: '#71717a', fontWeight: 600, fontSize: '0.875rem' }}>Añadir</span>
                </motion.div>
             </motion.div>
           </div>
         )}
       </div>
 
-      {/* Cart Panel - Glassmorphism */}
-      <div className="card glass-card dashboard-panel-right" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', border: 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-          <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <ShoppingCart className="text-primary" /> Pedido
-          </h2>
-          <span style={{ 
-            background: 'var(--primary)', 
-            color: 'white', 
-            padding: '0.25rem 0.75rem', 
-            borderRadius: '1rem', 
-            fontSize: '0.875rem',
-            fontWeight: 'bold'
-          }}>
-            {cart.length} ítems
+      {/* Right Panel - Cart */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', background: 'white', borderRadius: '32px', padding: '1.75rem', border: '1px solid #f4f4f5', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#18181b' }}>Pedido</h2>
+          <span style={{ background: '#18181b', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>
+            {cart.length} {cart.length === 1 ? 'ítem' : 'ítems'}
           </span>
         </div>
         
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '0.5rem' }}>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem' }}>
           <AnimatePresence mode="popLayout">
             {cart.length === 0 ? (
               <motion.div 
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}
+                style={{ color: '#a1a1aa', textAlign: 'center', marginTop: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}
               >
-                <div style={{ padding: '2rem', background: 'var(--primary-soft)', borderRadius: '50%' }}>
-                  <ShoppingBag size={48} className="text-primary" style={{ opacity: 0.5 }} />
+                <div style={{ padding: '1.5rem', background: '#fafafa', borderRadius: '50%' }}>
+                  <ShoppingBag size={32} style={{ opacity: 0.4 }} />
                 </div>
-                <p style={{ fontWeight: '500' }}>El carrito está vacío</p>
+                <p style={{ fontWeight: 500, fontSize: '0.9375rem' }}>Carrito vacío</p>
               </motion.div>
             ) : (
               cart.map(item => (
@@ -400,34 +367,26 @@ export default function DashboardClient({ products }: { products: Product[] }) {
                   initial={{ opacity: 0, x: 20, scale: 0.95 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -20, scale: 0.95 }}
-                  className="card"
-                  style={{ padding: '1.25rem', background: 'white', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}
+                  style={{ padding: '1rem 1.25rem', background: '#fafafa', borderRadius: '20px' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <h4 style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--text-primary)' }}>{item.productName}</h4>
-                    <button onClick={() => removeFromCart(item.uiId)} className="btn btn-danger" style={{ padding: '0.25rem', background: 'transparent' }}>
-                      <X size={18} />
+                    <h4 style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#18181b' }}>{item.productName}</h4>
+                    <button onClick={() => removeFromCart(item.uiId)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0' }}>
+                      <X size={16} style={{ color: '#ef4444' }} />
                     </button>
                   </div>
                   {item.toppings.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.375rem' }}>
                       {item.toppings.map((t, idx) => (
-                        <span key={idx} style={{ 
-                          fontSize: '0.75rem', 
-                          background: 'var(--bg-color)', 
-                          color: 'var(--text-secondary)', 
-                          padding: '0.15rem 0.5rem', 
-                          borderRadius: '1rem',
-                          border: '1px solid var(--border-color)'
-                        }}>
+                        <span key={idx} style={{ fontSize: '0.6875rem', background: '#f4f4f5', color: '#71717a', padding: '0.125rem 0.5rem', borderRadius: '8px', fontWeight: 500 }}>
                           {t}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Subtotal</span>
-                    <span style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '1.125rem' }}>${item.price.toLocaleString('es-CO')}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.625rem' }}>
+                    <span style={{ fontSize: '0.8125rem', color: '#71717a' }}>Subtotal</span>
+                    <span style={{ fontWeight: 700, color: '#18181b', fontSize: '1rem' }}>${item.price.toLocaleString('es-CO')}</span>
                   </div>
                 </motion.div>
               ))
@@ -435,32 +394,68 @@ export default function DashboardClient({ products }: { products: Product[] }) {
           </AnimatePresence>
         </div>
 
-        <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '2px dashed var(--border-color)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1.5rem' }}>
-            <span style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Total a pagar:</span>
-            <span style={{ fontSize: '2rem', fontWeight: '900', color: 'var(--text-primary)' }}>${totalCart.toLocaleString('es-CO')}</span>
+        <div style={{ marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid #f4f4f5' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1.25rem' }}>
+            <span style={{ fontSize: '1rem', color: '#71717a', fontWeight: 500 }}>Total:</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#18181b' }}>${totalCart.toLocaleString('es-CO')}</span>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn btn-primary" style={{ flex: 1, height: '4rem' }} onClick={() => checkout('NEQUI')} disabled={cart.length === 0}>
-              <CreditCard size={20} />
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button 
+              onClick={() => checkout('NEQUI')} 
+              disabled={cart.length === 0}
+              style={{ 
+                flex: 1, 
+                height: '3.5rem',
+                background: cart.length === 0 ? '#f4f4f5' : '#18181b', 
+                color: cart.length === 0 ? '#a1a1aa' : 'white', 
+                border: 'none', 
+                borderRadius: '16px', 
+                fontWeight: 600,
+                fontSize: '0.9375rem',
+                cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <CreditCard size={18} />
               <span>Nequi</span>
             </button>
-            <button className="btn btn-success" style={{ flex: 1, height: '4rem' }} onClick={() => checkout('EFECTIVO')} disabled={cart.length === 0}>
-              <Banknote size={20} />
+            <button 
+              onClick={() => checkout('EFECTIVO')} 
+              disabled={cart.length === 0}
+              style={{ 
+                flex: 1, 
+                height: '3.5rem',
+                background: cart.length === 0 ? '#f4f4f5' : '#10b981', 
+                color: cart.length === 0 ? '#a1a1aa' : 'white', 
+                border: 'none', 
+                borderRadius: '16px', 
+                fontWeight: 600,
+                fontSize: '0.9375rem',
+                cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Banknote size={18} />
               <span>Efectivo</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Product Selection Modal */}
+      {/* Product Modal */}
       <AnimatePresence>
         {activeProduct && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
             onClick={() => setActiveProduct(null)}
           >
             <motion.div 
@@ -468,71 +463,55 @@ export default function DashboardClient({ products }: { products: Product[] }) {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={e => e.stopPropagation()}
-              className="card glass-card" 
-              style={{ width: '600px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', padding: '2.5rem', border: 'none' }}
+              style={{ width: '560px', maxWidth: '95%', maxHeight: '85vh', overflowY: 'auto', background: 'white', borderRadius: '28px', padding: '2rem' }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '2rem', fontWeight: '800' }}>{activeProduct.name}</h2>
-                <button className="btn" style={{ background: 'var(--bg-color)', borderRadius: '50%', padding: '0.5rem' }} onClick={() => setActiveProduct(null)}>
-                  <X size={24} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#18181b' }}>{activeProduct.name}</h2>
+                <button style={{ background: '#f4f4f5', borderRadius: '12px', padding: '0.5rem', border: 'none', cursor: 'pointer' }} onClick={() => setActiveProduct(null)}>
+                  <X size={20} style={{ color: '#71717a' }} />
                 </button>
               </div>
-              
-              <div style={{ 
-                background: 'var(--primary-soft)', 
-                padding: '1.25rem', 
-                borderRadius: 'var(--radius-md)', 
-                marginBottom: '2rem', 
-                color: 'var(--primary)', 
-                display: 'flex',
-                gap: '0.75rem',
-                alignItems: 'flex-start'
-              }}>
-                <Info size={20} style={{ marginTop: '0.2rem', flexShrink: 0 }} />
-                <p style={{ fontWeight: '600', fontSize: '0.9375rem' }}>
-                  Este tamaño incluye {activeProduct.includedToppings} {activeProduct.includedToppings === 1 ? 'topping' : 'toppings'}. 
-                  Los adicionales se sumarán automáticamente al total.
-                </p>
-              </div>
+
+              <p style={{ fontSize: '0.875rem', color: '#71717a', marginBottom: '1.75rem' }}>
+                Incluye {activeProduct.includedToppings} {activeProduct.includedToppings === 1 ? 'topping' : 'toppings'} sin costo adicional
+              </p>
 
               {activeProduct.category === 'GRANIZADO' && (
-                <div style={{ marginBottom: '2rem' }}>
-                  <label style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.75rem', 
-                    cursor: 'pointer', 
-                    fontWeight: '700', 
-                    padding: '1.25rem', 
-                    border: '2px solid var(--border-color)', 
-                    borderRadius: 'var(--radius-lg)', 
-                    background: hasMerengue ? 'var(--primary-soft)' : 'white',
-                    borderColor: hasMerengue ? 'var(--primary)' : 'var(--border-color)',
-                    transition: 'all 0.2s'
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem', 
+                  cursor: 'pointer', 
+                  fontWeight: 600, 
+                  padding: '1rem 1.25rem', 
+                  border: `2px solid ${hasMerengue ? '#ec4899' : '#e4e4e7'}`, 
+                  borderRadius: '16px', 
+                  background: hasMerengue ? '#fdf2f8' : 'transparent',
+                  marginBottom: '1.75rem',
+                  transition: 'all 0.2s'
+                }}>
+                  <div style={{
+                    width: '1.25rem',
+                    height: '1.25rem',
+                    borderRadius: '6px',
+                    border: `2px solid ${hasMerengue ? '#ec4899' : '#d4d4d8'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: hasMerengue ? '#ec4899' : 'transparent'
                   }}>
-                    <div style={{
-                      width: '1.5rem',
-                      height: '1.5rem',
-                      borderRadius: '0.4rem',
-                      border: '2px solid var(--primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: hasMerengue ? 'var(--primary)' : 'transparent'
-                    }}>
-                      {hasMerengue && <Check size={16} color="white" />}
-                    </div>
-                    <input type="checkbox" checked={hasMerengue} onChange={e => setHasMerengue(e.target.checked)} style={{ display: 'none' }} />
-                    <span style={{ fontSize: '1.125rem' }}>¿Añadir Merengue?</span>
-                  </label>
-                </div>
+                    {hasMerengue && <Check size={12} color="white" />}
+                  </div>
+                  <input type="checkbox" checked={hasMerengue} onChange={e => setHasMerengue(e.target.checked)} style={{ display: 'none' }} />
+                  <span>Añadir Merengue</span>
+                </label>
               )}
 
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Sparkles size={20} className="text-primary" /> Elige tus Toppings
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#18181b', marginBottom: '1rem' }}>
+                Elige tus toppings
               </h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.625rem', marginBottom: '2rem' }}>
                 {availableToppings.map(t => {
                   const isSelected = selectedToppings.find(x => x.id === t.id);
                   return (
@@ -542,120 +521,131 @@ export default function DashboardClient({ products }: { products: Product[] }) {
                       whileTap={{ scale: 0.98 }}
                       onClick={() => toggleTopping(t)}
                       style={{
-                        padding: '1rem',
-                        border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border-color)'}`,
-                        borderRadius: 'var(--radius-md)',
+                        padding: '0.875rem',
+                        border: `2px solid ${isSelected ? '#ec4899' : '#e4e4e7'}`,
+                        borderRadius: '16px',
                         cursor: 'pointer',
-                        backgroundColor: isSelected ? 'var(--primary-soft)' : 'white',
+                        backgroundColor: isSelected ? '#fdf2f8' : 'white',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '0.25rem',
                         textAlign: 'center',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.15s'
                       }}
                     >
-                      <span style={{ fontWeight: '700', fontSize: '1rem' }}>{t.name}</span>
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>+${t.price}</span>
-                      <div style={{ 
-                        marginTop: '0.5rem', 
-                        width: '1.25rem', 
-                        height: '1.25rem', 
-                        borderRadius: '50%', 
-                        border: '1px solid var(--border-color)', 
-                        background: isSelected ? 'var(--primary)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        {isSelected && <Check size={12} color="white" />}
-                      </div>
+                      <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#18181b' }}>{t.name}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#ec4899', fontWeight: 600 }}>+${t.price}</span>
                     </motion.div>
                   )
                 })}
               </div>
 
-              <div style={{ position: 'sticky', bottom: 0, padding: '1rem 0 0 0', background: 'transparent' }}>
-                <button 
-                  className="btn btn-primary" 
-                  style={{ width: '100%', height: '4rem', fontSize: '1.125rem' }} 
-                  onClick={addToCart}
-                >
-                  Confirmar y Añadir
-                  <ChevronRight size={20} />
-                </button>
-              </div>
+              <button 
+                onClick={addToCart}
+                style={{ 
+                  width: '100%', 
+                  height: '3.5rem', 
+                  background: '#ec4899', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '16px', 
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }} 
+              >
+                Añadir al pedido
+                <ChevronRight size={18} />
+              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Admin Form Modal */}
+      {/* Product Form Modal */}
       <AnimatePresence>
         {isProductFormOpen && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }}
           >
             <motion.div 
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="card" style={{ width: '450px', maxWidth: '95%', padding: '2.5rem' }}
+              style={{ width: '420px', maxWidth: '95%', background: 'white', borderRadius: '24px', padding: '2rem' }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>{editingProduct ? 'Editar' : 'Añadir'} Producto</h2>
-                <button className="btn" style={{ background: 'var(--bg-color)', borderRadius: '50%', padding: '0.5rem' }} onClick={() => setIsProductFormOpen(false)}>
-                  <X size={20} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem' }}>
+                <h2 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#18181b' }}>{editingProduct ? 'Editar' : 'Nuevo'} Producto</h2>
+                <button style={{ background: '#f4f4f5', borderRadius: '10px', padding: '0.375rem', border: 'none', cursor: 'pointer' }} onClick={() => setIsProductFormOpen(false)}>
+                  <X size={18} style={{ color: '#71717a' }} />
                 </button>
               </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div className="form-group">
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Nombre del Producto</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.125rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: '#52525b' }}>Nombre</label>
                   <input 
-                    type="text" placeholder="Ej. Yogurt Grande" style={{ width: '100%' }}
-                    value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} 
+                    type="text" 
+                    value={productForm.name} 
+                    onChange={e => setProductForm({...productForm, name: e.target.value})} 
+                    placeholder="Ej. Yogurt Grande"
+                    style={{ width: '100%', padding: '0.875rem 1rem', border: '1px solid #e4e4e7', borderRadius: '12px', fontSize: '0.9375rem', outline: 'none' }}
                   />
                 </div>
                 
-                <div className="form-group">
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Categoría</label>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: '#52525b' }}>Categoría</label>
                   <select 
-                    value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}
-                    style={{ width: '100%' }}
+                    value={productForm.category} 
+                    onChange={e => setProductForm({...productForm, category: e.target.value})}
+                    style={{ width: '100%', padding: '0.875rem 1rem', border: '1px solid #e4e4e7', borderRadius: '12px', fontSize: '0.9375rem', outline: 'none', background: 'white' }}
                   >
                     <option value="YOGURT">Yogurt Helado</option>
                     <option value="GRANIZADO">Granizado</option>
                     <option value="BROWNIE">Brownie</option>
                     <option value="CONO">Cono / Waffle</option>
-                    <option value="TOPPING">Topping / Adicional</option>
+                    <option value="TOPPING">Topping</option>
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Precio Unitario ($)</label>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: '#52525b' }}>Precio ($)</label>
                   <input 
-                    type="number" style={{ width: '100%' }}
-                    value={productForm.price || ''} onChange={e => setProductForm({...productForm, price: parseFloat(e.target.value) || 0})} 
+                    type="number" 
+                    value={productForm.price || ''} 
+                    onChange={e => setProductForm({...productForm, price: parseFloat(e.target.value) || 0})} 
+                    placeholder="0"
+                    style={{ width: '100%', padding: '0.875rem 1rem', border: '1px solid #e4e4e7', borderRadius: '12px', fontSize: '0.9375rem', outline: 'none' }}
                   />
                 </div>
 
                 {productForm.category !== 'TOPPING' && (
-                  <div className="form-group">
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>Toppings Gratuitos Incluidos</label>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: '#52525b' }}>Toppings incluidos</label>
                     <input 
-                      type="number" min="0" style={{ width: '100%' }}
-                      value={productForm.includedToppings || 0} onChange={e => setProductForm({...productForm, includedToppings: parseInt(e.target.value) || 0})} 
+                      type="number" 
+                      min="0" 
+                      value={productForm.includedToppings || 0} 
+                      onChange={e => setProductForm({...productForm, includedToppings: parseInt(e.target.value) || 0})} 
+                      style={{ width: '100%', padding: '0.875rem 1rem', border: '1px solid #e4e4e7', borderRadius: '12px', fontSize: '0.9375rem', outline: 'none' }}
                     />
                   </div>
                 )}
                 
-                <button className="btn btn-primary" onClick={saveProduct} style={{ marginTop: '1rem', width: '100%', height: '3.5rem' }}>
-                  Guardar Cambios
+                <button 
+                  onClick={saveProduct} 
+                  style={{ marginTop: '0.5rem', width: '100%', height: '3rem', background: '#18181b', color: 'white', border: 'none', borderRadius: '14px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Guardar
                 </button>
               </div>
             </motion.div>

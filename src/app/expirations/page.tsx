@@ -14,9 +14,8 @@ export default async function ExpirationsPage() {
   });
 
   return (
-    <div>
-      <h1 style={{ marginBottom: '1.5rem', fontSize: '2rem', color: 'var(--accent-blue)' }}>📅 Fechas de Vencimiento</h1>
+    <main>
       <ExpirationsClient initialItems={initialItems} inventoryItems={inventoryItems} />
-    </div>
+    </main>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, PackagePlus, Trash2, Download, AlertTriangle, ChevronRight, Clock, Box } from 'lucide-react';
+import { CalendarDays, PackagePlus, Trash2, Download, AlertTriangle, ChevronRight, Clock, Box, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { format, differenceInDays } from 'date-fns';

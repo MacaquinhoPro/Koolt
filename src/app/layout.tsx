@@ -26,25 +26,25 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={`${outfit.variable} ${inter.variable}`}>
-      <body>
+      <body style={{ margin: 0, padding: 0 }}>
         <div className="app-container">
           <Sidebar />
           <main className="main-content">
             {children}
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#1e293b',
-                  color: '#fff',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                },
-              }}
-            />
           </main>
         </div>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#1e293b',
+              color: '#fff',
+              borderRadius: '12px',
+              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+            },
+          }}
+        />
       </body>
     </html>
   );

@@ -10,9 +10,8 @@ export default async function InventoryPage() {
   });
   
   return (
-    <div>
-      <h1 style={{ marginBottom: '1.5rem', fontSize: '2rem', color: 'var(--accent-blue)' }}>📦 Inventario de Koolt</h1>
+    <main>
       <InventoryClient initialItems={initialItems} />
-    </div>
+    </main>
   );
 }

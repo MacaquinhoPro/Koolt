@@ -73,37 +73,85 @@ export default function StatsClient() {
 
   const exportExcel = () => {
     if (!data) return;
-    const wsData = [
-      { Metrica: "Filtro", Valor: filter },
-      ...(filter === 'custom' && fromDate && toDate ? [{ Metrica: "Desde", Valor: format(fromDate, 'yyyy-MM-dd') }, { Metrica: "Hasta", Valor: format(toDate, 'yyyy-MM-dd') }] : []),
+
+    const fechaReporte = format(new Date(), 'dd/MM/yyyy HH:mm');
+    const titulo = `REPORTE DE VENTAS - KOOLT HELADERÍA`;
+    const periodo = filter === 'today' ? 'HOY' : filter === 'week' ? 'ÚLTIMA SEMANA' : filter === 'month' ? 'ÚLTIMO MES' : filter === '3months' ? 'ÚLTIMOS 3 MESES' : filter === 'all' ? 'TODO EL HISTÓRICO' : 'PERSONALIZADO';
+
+    const infoSheet = [
+      { Metrica: "", Valor: "" },
+      { Metrica: "═══════════════════════════════════════════════════", Valor: "═══════════════════════════════════════" },
+      { Metrica: titulo, Valor: "" },
+      { Metrica: "Fecha de reporte:", Valor: fechaReporte },
+      { Metrica: "Período:", Valor: periodo },
+      { Metrica: "═══════════════════════════════════════════════════", Valor: "═══════════════════════════════════════" },
+      { Metrica: "", Valor: "" },
+      { Metrica: "--- RESUMEN GENERAL ---", Valor: "" },
       { Metrica: "Pedidos Totales", Valor: data.ordersCount },
-      { Metrica: "Productos Vendidos", Valor: data.totalItemsSold },
+      { Metrica: "Unidades Vendidas", Valor: data.totalItemsSold },
       { Metrica: "Ingresos Totales", Valor: "$" + data.totalEarned.toLocaleString('es-CO') },
       { Metrica: "Ganancia Neta (60%)", Valor: "$" + data.netProfit.toLocaleString('es-CO') },
-      { Metrica: "Ventas Nequi", Valor: "$" + data.earnedNequi.toLocaleString('es-CO') },
-      { Metrica: "Ventas Efectivo", Valor: "$" + data.earnedEfectivo.toLocaleString('es-CO') },
-      { Metrica: "Producto Más Vendido", Valor: data.topSeller },
-      { Metrica: "Productos Sin Ventas", Valor: data.zeroSales.length > 0 ? data.zeroSales.join(', ') : 'Ninguno' },
+      { Metrica: "", Valor: "" },
+      { Metrica: "--- MÉTODO DE PAGO ---", Valor: "" },
+      { Metrica: "Ventas por Nequi", Valor: "$" + data.earnedNequi.toLocaleString('es-CO') },
+      { Metrica: "Ventas en Efectivo", Valor: "$" + data.earnedEfectivo.toLocaleString('es-CO') },
+      { Metrica: "% Nequi", Valor: data.totalEarned > 0 ? ((data.earnedNequi / data.totalEarned) * 100).toFixed(1) + "%" : "0%" },
+      { Metrica: "% Efectivo", Valor: data.totalEarned > 0 ? ((data.earnedEfectivo / data.totalEarned) * 100).toFixed(1) + "%" : "0%" },
+      { Metrica: "", Valor: "" },
+      { Metrica: "--- PRODUCTO TOP ---", Valor: "" },
+      { Metrica: "Producto más vendido", Valor: data.topSeller && data.productSales[data.topSeller] ? `${data.topSeller} (${data.productSales[data.topSeller]} unidades)` : "N/A" },
+      { Metrica: "", Valor: "" },
+      { Metrica: "--- PRODUCTOS SIN VENTA ---", Valor: "" },
+      { Metrica: "Cantidad sin ventas", Valor: data.zeroSales.length },
+      { Metrica: "Productos sin ventas", Valor: data.zeroSales.length > 0 ? data.zeroSales.join(', ') : "Todos tienen ventas" },
     ];
 
-    wsData.push({ Metrica: "", Valor: "" });
-    wsData.push({ Metrica: "--- UNIDADES VENDIDAS POR PRODUCTO ---", Valor: "" });
+    const ventasSheet = [
+      { Metrica: "--- DETALLE DE UNIDADES VENDIDAS POR PRODUCTO ---", Valor: "Unidades", Valor2: "Ingresos Estimados" },
+    ];
     Object.entries(data.productSales || {}).forEach(([pName, count]) => {
       if (count > 0) {
-        wsData.push({ Metrica: pName, Valor: count });
+        ventasSheet.push({ Metrica: pName, Valor: count, Valor2: "Consultar en sistema" });
       }
     });
-    
-    wsData.push({ Metrica: "", Valor: "" });
-    wsData.push({ Metrica: "--- DETALLE POR DÍA ---", Valor: "" });
+
+    ventasSheet.push({ Metrica: "", Valor: "" });
+    ventasSheet.push({ Metrica: "--- RESUMEN DIARIO ---", Valor: "Ventas", Valor2: "Pedidos (est.)" });
     data.chartData.forEach(d => {
-      wsData.push({ Metrica: d.date, Valor: '$' + d.amount.toLocaleString('es-CO') });
+      const pedidosEst = d.amount > 0 ? Math.max(1, Math.round(d.amount / 25000)) : 0;
+      ventasSheet.push({ Metrica: d.date, Valor: "$" + d.amount.toLocaleString('es-CO'), Valor2: pedidosEst });
     });
 
-    const ws = XLSX.utils.json_to_sheet(wsData);
+    const resumenSheet = [
+      { Metrica: "════════════════════════════════════", Valor: "════════════════════════════", Valor2: "═══════════" },
+      { Metrica: "RESUMEN DE VENTAS", Valor: "", Valor2: "" },
+      { Metrica: "════════════════════════════════════", Valor: "════════════════════════════", Valor2: "═══════════" },
+      { Metrica: "", Valor: "", Valor2: "" },
+      { Metrica: "MÉTRICA", Valor: " VALOR ", Valor2: " NOTA " },
+      { Metrica: "──────────────", Valor: "───────────────", Valor2: "───────────" },
+      { Metrica: "Pedidos", Valor: data.ordersCount, Valor2: "Órdenes procesadas" },
+      { Metrica: "Unidades", Valor: data.totalItemsSold, Valor2: "Items vendidos" },
+      { Metrica: "Ticket Promedio", Valor: data.ordersCount > 0 ? "$" + Math.round(data.totalEarned / data.ordersCount).toLocaleString('es-CO') : "$0", Valor2: "Por orden" },
+      { Metrica: "Ingresos", Valor: "$" + data.totalEarned.toLocaleString('es-CO'), Valor2: "Total vendido" },
+      { Metrica: "Ganancia", Valor: "$" + data.netProfit.toLocaleString('es-CO'), Valor2: "60% ingresos" },
+    ];
+
+    const wsInfo = XLSX.utils.json_to_sheet(infoSheet);
+    const wsVentas = XLSX.utils.json_to_sheet(ventasSheet);
+    const wsResumen = XLSX.utils.json_to_sheet(resumenSheet);
+
+    const colWidths = [{ wch: 40 }, { wch: 20 }];
+    wsInfo['!cols'] = colWidths;
+    wsVentas['!cols'] = [{ wch: 45 }, { wch: 12 }, { wch: 18 }];
+    wsResumen['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }];
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Estadisticas");
-    XLSX.writeFile(wb, `Reporte_Koolt_${filter}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, wsInfo, "Resumen");
+    XLSX.utils.book_append_sheet(wb, wsVentas, "Ventas");
+    XLSX.utils.book_append_sheet(wb, wsResumen, "Estadísticas");
+
+    const fileName = `Reporte_Koolt_${filter}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   if (loading && !data) return <div style={{ color: 'var(--text-secondary)', padding: '5rem', textAlign: 'center' }}>Cargando estadísticas...</div>;
@@ -217,19 +265,19 @@ export default function StatsClient() {
       </motion.div>
 
       {/* Chart Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+      <div style={{ display: 'flex', gap: '2rem' }}>
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
-          className="card" style={{ flex: 2, minHeight: '450px', display: 'flex', flexDirection: 'column' }}
+          className="card" style={{ flex: 2, height: '350px', minHeight: '350px', display: 'flex', flexDirection: 'column' }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <BarChart3 className="text-primary" size={24} /> Desempeño de Ventas
             </h3>
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minHeight: 280 }}>
             {data.chartData && data.chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
