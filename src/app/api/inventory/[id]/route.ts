@@ -19,7 +19,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
     
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.unit !== undefined) updateData.unit = body.unit;
     if (body.quantity !== undefined) updateData.quantity = parseFloat(body.quantity);

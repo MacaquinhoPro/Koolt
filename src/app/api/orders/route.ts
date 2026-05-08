@@ -1,67 +1,116 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+type IncomingItem = {
+  productId: string;
+  productName: string;
+  price: number;
+  toppings?: string[];
+  merengue?: boolean;
+};
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 100);
+
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: { items: true },
+    });
+
+    return NextResponse.json(orders);
+  } catch (error) {
+    console.error('GET /api/orders error:', error);
+    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
-    const { items, paymentMethod, totalPrice } = await req.json();
+    const body = await req.json();
+    const items = Array.isArray(body.items) ? (body.items as IncomingItem[]) : [];
+    const paymentMethod: string = body.paymentMethod;
+    const totalPrice: number = Number(body.totalPrice);
 
-    const order = await prisma.order.create({
-      data: {
-        totalPrice,
-        paymentMethod,
-        items: {
-          create: items.map((item: any) => ({
-            productId: item.productId,
-            productName: item.productName,
-            price: item.price,
-            toppings: JSON.stringify(item.toppings),
-            merengue: item.merengue || false
-          }))
-        }
-      }
-    });
+    if (items.length === 0) {
+      return NextResponse.json({ error: 'El pedido no tiene items' }, { status: 400 });
+    }
+    if (!['NEQUI', 'EFECTIVO'].includes(paymentMethod)) {
+      return NextResponse.json({ error: 'Método de pago inválido' }, { status: 400 });
+    }
+    if (!Number.isFinite(totalPrice) || totalPrice < 0) {
+      return NextResponse.json({ error: 'Total inválido' }, { status: 400 });
+    }
 
-    // Get current inventory
-    const allInventory = await prisma.inventoryItem.findMany();
-    console.log('Inventory items:', allInventory.map(i => ({ id: i.id, name: i.name, qty: i.quantity })));
-    const inventoryMap = new Map(allInventory.map(i => [i.id, i]));
-
-    // Get all products with their ingredients
-    const productIds = [...new Set(items.map((i: any) => i.productId))] as string[];
-    console.log('Items in order:', items.map((i: any) => ({ productId: i.productId, productName: i.productName })));
-    console.log('Product IDs:', productIds);
-
-    const products = await prisma.product.findMany({
+    const productIds = Array.from(new Set(items.map(i => i.productId)));
+    const productsWithIngredients = await prisma.product.findMany({
       where: { id: { in: productIds } },
-      include: { ingredients: true }
+      include: { ingredients: true },
     });
 
-    console.log('Products in order:', JSON.stringify(products.map(p => ({ id: p.id, name: p.name, ingredients: p.ingredients }))));
+    // Map topping name -> ingredients (so toppings also reduce inventory)
+    const toppingsByName = new Map<string, { inventoryItemId: string; quantity: number }[]>();
+    const allToppings = await prisma.product.findMany({
+      where: { category: 'TOPPING' },
+      include: { ingredients: true },
+    });
+    for (const t of allToppings) {
+      toppingsByName.set(
+        t.name,
+        t.ingredients.map(i => ({ inventoryItemId: i.inventoryItemId, quantity: i.quantity })),
+      );
+    }
 
-    // Reduce inventory based on product ingredients (quantity per item)
+    // Aggregate inventory consumption
+    const consumption = new Map<string, number>();
+    const accumulate = (invId: string, qty: number) => {
+      consumption.set(invId, (consumption.get(invId) || 0) + qty);
+    };
     for (const item of items) {
-      const product = products.find(p => p.id === item.productId);
-      console.log('Processing item:', item.productName, 'product:', product?.name, 'ingredients:', product?.ingredients?.length);
-
-      if (product && product.ingredients && product.ingredients.length > 0) {
-        for (const ing of product.ingredients) {
-          const invItem = inventoryMap.get(ing.inventoryItemId);
-          console.log('Reducing inventory:', invItem?.name, 'by', ing.quantity, 'current:', invItem?.quantity);
-          if (invItem) {
-            await prisma.inventoryItem.update({
-              where: { id: invItem.id },
-              data: { quantity: Math.max(0, invItem.quantity - ing.quantity) }
-            });
-          }
-        }
-      } else {
-        console.log('No ingredients found for product:', product?.name);
+      const product = productsWithIngredients.find(p => p.id === item.productId);
+      if (product) {
+        for (const ing of product.ingredients) accumulate(ing.inventoryItemId, ing.quantity);
+      }
+      for (const tName of item.toppings || []) {
+        const ings = toppingsByName.get(tName);
+        if (ings) for (const ing of ings) accumulate(ing.inventoryItemId, ing.quantity);
       }
     }
 
+    const order = await prisma.$transaction(async tx => {
+      const created = await tx.order.create({
+        data: {
+          totalPrice,
+          paymentMethod,
+          items: {
+            create: items.map(item => ({
+              productId: item.productId,
+              productName: item.productName,
+              price: item.price,
+              toppings: JSON.stringify(item.toppings || []),
+              merengue: !!item.merengue,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      for (const [invId, qty] of consumption) {
+        await tx.inventoryItem.update({
+          where: { id: invId },
+          data: { quantity: { decrement: qty } },
+        });
+      }
+
+      return created;
+    });
+
     return NextResponse.json(order);
-  } catch (error: any) {
-    console.error('Order error:', error.message, error.stack);
-    return NextResponse.json({ error: 'Failed to create order: ' + error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('POST /api/orders error:', message);
+    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
   }
 }

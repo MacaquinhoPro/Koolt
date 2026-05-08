@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { format, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { format, startOfDay, endOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 
 export async function GET(req: Request) {
   try {
@@ -8,11 +8,11 @@ export async function GET(req: Request) {
     const filter = searchParams.get('filter') || 'today';
     const fromStr = searchParams.get('from');
     const toStr = searchParams.get('to');
-    
+
+    const now = new Date();
     let gteLimit = new Date(0);
     let lteLimit = new Date();
-    const now = new Date();
-    
+
     if (filter === 'custom' && fromStr && toStr) {
       gteLimit = startOfDay(parseISO(fromStr));
       lteLimit = endOfDay(parseISO(toStr));
@@ -30,85 +30,109 @@ export async function GET(req: Request) {
     }
 
     const orders = await prisma.order.findMany({
-      where: { 
-        createdAt: { 
-          gte: gteLimit,
-          lte: lteLimit
-        } 
-      },
+      where: { createdAt: { gte: gteLimit, lte: lteLimit } },
       include: { items: true },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
 
     const products = await prisma.product.findMany();
 
-    // Calculators
     let totalEarned = 0;
     let earnedNequi = 0;
     let earnedEfectivo = 0;
     let totalItemsSold = 0;
 
     const salesMap: Record<string, number> = {};
+    const categorySales: Record<string, number> = {};
     const chartDataMap: Record<string, number> = {};
+    const ordersByDay: Record<string, number> = {};
+    const hourlyMap: Record<number, number> = {};
 
     for (const p of products) {
-      if (p.category !== 'TOPPING') {
-        salesMap[p.name] = 0;
-      }
+      if (p.category !== 'TOPPING') salesMap[p.name] = 0;
     }
 
-    orders.forEach(o => {
+    const categoryByProductName = new Map<string, string>();
+    for (const p of products) categoryByProductName.set(p.name, p.category);
+
+    for (const o of orders) {
       totalEarned += o.totalPrice;
       if (o.paymentMethod === 'NEQUI') earnedNequi += o.totalPrice;
       if (o.paymentMethod === 'EFECTIVO') earnedEfectivo += o.totalPrice;
 
-      // Group by day for the chart
       const dayStr = format(new Date(o.createdAt), 'yyyy-MM-dd');
       chartDataMap[dayStr] = (chartDataMap[dayStr] || 0) + o.totalPrice;
+      ordersByDay[dayStr] = (ordersByDay[dayStr] || 0) + 1;
 
-      o.items.forEach(i => {
+      const hour = new Date(o.createdAt).getHours();
+      hourlyMap[hour] = (hourlyMap[hour] || 0) + o.totalPrice;
+
+      for (const i of o.items) {
         totalItemsSold++;
-        if (salesMap[i.productName] !== undefined) {
-          salesMap[i.productName]++;
-        } else {
-          salesMap[i.productName] = 1;
-        }
-      });
-    });
+        salesMap[i.productName] = (salesMap[i.productName] || 0) + 1;
+        const cat = categoryByProductName.get(i.productName) || 'OTRO';
+        categorySales[cat] = (categorySales[cat] || 0) + i.price;
+      }
+    }
 
-    // Format chart data for recharts
-    const chartData = Object.entries(chartDataMap).map(([date, amount]) => ({
-      date,
-      amount
-    }));
+    // Build a continuous chartData (fills empty days with 0) when range is small
+    let chartData: { date: string; amount: number; orders: number }[];
+    if (filter !== 'all' && gteLimit.getTime() > 0) {
+      const days = eachDayOfInterval({ start: startOfDay(gteLimit), end: endOfDay(lteLimit) });
+      chartData = days.map(d => {
+        const k = format(d, 'yyyy-MM-dd');
+        return { date: k, amount: chartDataMap[k] || 0, orders: ordersByDay[k] || 0 };
+      });
+    } else {
+      chartData = Object.entries(chartDataMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, amount]) => ({ date, amount, orders: ordersByDay[date] || 0 }));
+    }
 
     let topSeller = 'N/A';
     let maxSold = 0;
-    const zeroSales = [];
-
+    const zeroSales: string[] = [];
     for (const [name, count] of Object.entries(salesMap)) {
       if (count > maxSold) {
         maxSold = count;
         topSeller = name;
       }
-      if (count === 0) {
-        zeroSales.push(name);
+      if (count === 0) zeroSales.push(name);
+    }
+
+    const avgTicket = orders.length > 0 ? totalEarned / orders.length : 0;
+    const netProfit = totalEarned * 0.6;
+
+    let bestHour = 0;
+    let bestHourAmount = 0;
+    for (const [h, v] of Object.entries(hourlyMap)) {
+      if (v > bestHourAmount) {
+        bestHourAmount = v;
+        bestHour = parseInt(h, 10);
       }
     }
 
-    const netProfit = totalEarned * 0.6; // Ganancia del 60%
+    const hourlyData = Array.from({ length: 24 }, (_, h) => ({
+      hour: `${String(h).padStart(2, '0')}:00`,
+      amount: hourlyMap[h] || 0,
+    }));
 
     return NextResponse.json({
       ordersCount: orders.length,
       totalEarned,
       netProfit,
+      avgTicket,
       earnedNequi,
       earnedEfectivo,
       totalItemsSold,
       topSeller,
+      bestHour: `${String(bestHour).padStart(2, '0')}:00`,
+      bestHourAmount,
       zeroSales,
       productSales: salesMap,
-      chartData // Included timeseries
+      categorySales,
+      chartData,
+      hourlyData,
     });
   } catch (error) {
     console.error('GET /api/stats error:', error);

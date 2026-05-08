@@ -1,23 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+const VALID_CATEGORIES = new Set(['YOGURT', 'GRANIZADO', 'BROWNIE', 'CONO', 'TOPPING', 'OTRO']);
+
 export async function GET() {
   try {
     const products = await prisma.product.findMany({
-      orderBy: { price: 'asc' },
-      include: { ingredients: { include: { inventoryItem: true } } }
+      orderBy: [{ category: 'asc' }, { price: 'asc' }],
+      include: { ingredients: { include: { inventoryItem: true } } },
     });
-
-    const formatted = products.map(p => ({
-      ...p,
-      ingredients: p.ingredients.map(i => ({
-        inventoryItemId: i.inventoryItemId,
-        quantity: i.quantity,
-        inventoryItem: i.inventoryItem
-      }))
-    }));
-
-    return NextResponse.json(formatted);
+    return NextResponse.json(products);
   } catch (error) {
     console.error('GET /api/products error:', error);
     return NextResponse.json({ error: 'Failed to find products' }, { status: 500 });
@@ -29,40 +21,41 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { ingredients, ...productData } = body;
 
-    console.log('POST ingredients:', JSON.stringify(ingredients));
+    if (!productData.name || typeof productData.name !== 'string') {
+      return NextResponse.json({ error: 'Nombre requerido' }, { status: 400 });
+    }
+    if (!VALID_CATEGORIES.has(productData.category)) {
+      return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 });
+    }
+    const price = parseFloat(productData.price);
+    if (!Number.isFinite(price) || price < 0) {
+      return NextResponse.json({ error: 'Precio inválido' }, { status: 400 });
+    }
 
     const product = await prisma.product.create({
       data: {
-        name: productData.name,
+        name: productData.name.trim(),
         category: productData.category,
-        price: parseFloat(productData.price),
-        includedToppings: parseInt(productData.includedToppings || '0'),
-        ...(ingredients && ingredients.length > 0 ? {
-          ingredients: {
-            create: ingredients.map((ing: { inventoryItemId: string; quantity: number | string }) => ({
-              inventoryItemId: ing.inventoryItemId,
-              quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) : ing.quantity
-            }))
-          }
-        } : {})
+        price,
+        includedToppings: parseInt(productData.includedToppings || '0', 10) || 0,
+        ...(Array.isArray(ingredients) && ingredients.length > 0
+          ? {
+              ingredients: {
+                create: ingredients.map((ing: { inventoryItemId: string; quantity: number | string }) => ({
+                  inventoryItemId: ing.inventoryItemId,
+                  quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) : ing.quantity,
+                })),
+              },
+            }
+          : {}),
       },
-      include: { ingredients: { include: { inventoryItem: true } } }
+      include: { ingredients: { include: { inventoryItem: true } } },
     });
 
-    console.log('Created product with ingredients:', JSON.stringify(product.ingredients));
-
-    const formatted = {
-      ...product,
-      ingredients: product.ingredients.map(i => ({
-        inventoryItemId: i.inventoryItemId,
-        quantity: i.quantity,
-        inventoryItem: i.inventoryItem
-      }))
-    };
-
-    return NextResponse.json(formatted);
-  } catch (err: any) {
-    console.error('POST /api/products error:', err);
-    return NextResponse.json({ error: err.message || 'Failed to create product' }, { status: 500 });
+    return NextResponse.json(product);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('POST /api/products error:', message);
+    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
   }
 }

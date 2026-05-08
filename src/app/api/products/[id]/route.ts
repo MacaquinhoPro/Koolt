@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.product.delete({
-      where: { id }
-    });
+    await prisma.product.delete({ where: { id } });
     return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('DELETE /api/products/[id] error:', err);
+  } catch (error) {
+    console.error('DELETE /api/products/[id] error:', error);
     return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
 }
@@ -20,51 +18,42 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const body = await req.json();
     const { ingredients, ...productData } = body;
 
-    console.log('PATCH body:', JSON.stringify(body));
-    console.log('PATCH ingredients:', JSON.stringify(ingredients));
-
-    if (ingredients) {
-      console.log('Deleting existing ingredients for product:', id);
-      await prisma.productIngredient.deleteMany({ where: { productId: id } });
-
-      if (ingredients.length > 0) {
-        console.log('Creating new ingredients:', ingredients);
-        await prisma.productIngredient.createMany({
-          data: ingredients.map((ing: { inventoryItemId: string; quantity: number | string }) => ({
-            productId: id,
-            inventoryItemId: ing.inventoryItemId,
-            quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) : ing.quantity
-          }))
-        });
+    await prisma.$transaction(async tx => {
+      if (Array.isArray(ingredients)) {
+        await tx.productIngredient.deleteMany({ where: { productId: id } });
+        if (ingredients.length > 0) {
+          await tx.productIngredient.createMany({
+            data: ingredients.map((ing: { inventoryItemId: string; quantity: number | string }) => ({
+              productId: id,
+              inventoryItemId: ing.inventoryItemId,
+              quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) : ing.quantity,
+            })),
+          });
+        }
       }
-    }
 
-    const updateData: any = {};
-    if (productData.name !== undefined) updateData.name = productData.name;
-    if (productData.price !== undefined) updateData.price = parseFloat(productData.price);
-    if (productData.category !== undefined) updateData.category = productData.category;
-    if (productData.includedToppings !== undefined) updateData.includedToppings = parseInt(productData.includedToppings);
+      const updateData: Record<string, unknown> = {};
+      if (productData.name !== undefined) updateData.name = String(productData.name).trim();
+      if (productData.price !== undefined) updateData.price = parseFloat(productData.price);
+      if (productData.category !== undefined) updateData.category = productData.category;
+      if (productData.includedToppings !== undefined) {
+        updateData.includedToppings = parseInt(productData.includedToppings, 10) || 0;
+      }
 
-    const updated = await prisma.product.update({
-      where: { id },
-      data: updateData,
-      include: { ingredients: { include: { inventoryItem: true } } }
+      if (Object.keys(updateData).length > 0) {
+        await tx.product.update({ where: { id }, data: updateData });
+      }
     });
 
-    console.log('Updated product ingredients:', JSON.stringify(updated.ingredients));
+    const updated = await prisma.product.findUnique({
+      where: { id },
+      include: { ingredients: { include: { inventoryItem: true } } },
+    });
 
-    const formatted = {
-      ...updated,
-      ingredients: updated.ingredients.map(i => ({
-        inventoryItemId: i.inventoryItemId,
-        quantity: i.quantity,
-        inventoryItem: i.inventoryItem
-      }))
-    };
-
-    return NextResponse.json(formatted);
-  } catch (err: any) {
-    console.error('PATCH /api/products/[id] error:', err);
-    return NextResponse.json({ error: err.message || 'Failed to update product details' }, { status: 500 });
+    return NextResponse.json(updated);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('PATCH /api/products/[id] error:', message);
+    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
   }
 }

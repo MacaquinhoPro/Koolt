@@ -1,48 +1,56 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Outfit, Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from '@/components/Sidebar';
 import './globals.css';
 
-const outfit = Outfit({ 
+const outfit = Outfit({
   subsets: ['latin'],
   variable: '--font-outfit',
+  display: 'swap',
 });
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Koolt POS | Premium Management',
-  description: 'Point of Sale app for Koolt Ice Cream Shop',
+  title: 'Koolt POS · Gestión de heladería',
+  description: 'Sistema de punto de venta y gestión integral para Koolt Heladería.',
+  applicationName: 'Koolt POS',
+  icons: { icon: '/favicon.ico' },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#6366f1',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${outfit.variable} ${inter.variable}`}>
       <body style={{ margin: 0, padding: 0 }}>
         <div className="app-container">
           <Sidebar />
-          <main className="main-content">
-            {children}
-          </main>
+          <main className="main-content">{children}</main>
         </div>
-        <Toaster 
+        <Toaster
           position="top-right"
           toastOptions={{
-            duration: 4000,
+            duration: 3500,
             style: {
-              background: '#1e293b',
+              background: '#0f172a',
               color: '#fff',
-              borderRadius: '12px',
-              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+              borderRadius: '14px',
+              boxShadow: '0 10px 24px -6px rgba(15,23,42,0.25)',
+              padding: '12px 16px',
+              fontWeight: 500,
             },
+            success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+            error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
       </body>

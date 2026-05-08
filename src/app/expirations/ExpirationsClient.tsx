@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, PackagePlus, Trash2, Download, AlertTriangle, ChevronRight, Clock, Box, Plus } from 'lucide-react';
+import { CalendarDays, PackagePlus, Trash2, Download, AlertTriangle, Clock, Box, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { format, differenceInDays } from 'date-fns';
@@ -71,7 +71,7 @@ export default function ExpirationsClient({ initialItems, inventoryItems }: { in
       } else {
         toast.error('Error al añadir');
       }
-    } catch (err) {
+    } catch {
       toast.error('Error del servidor');
     } finally {
       setLoading(false);
@@ -94,7 +94,7 @@ export default function ExpirationsClient({ initialItems, inventoryItems }: { in
       } else {
         toast.error('Error al eliminar');
       }
-    } catch (err) {
+    } catch {
       toast.error('Error del servidor');
     } finally {
       setDeleteId(null);
@@ -292,7 +292,7 @@ export default function ExpirationsClient({ initialItems, inventoryItems }: { in
                     fontStyle: 'italic',
                     borderLeft: '2px solid var(--border-color)'
                   }}>
-                    "{item.notes}"
+                    &ldquo;{item.notes}&rdquo;
                   </div>
                 )}
               </motion.div>
